@@ -48,7 +48,7 @@ train = dict(max_epoch=10,
 #                       steps=[300,360],
 #                       steps_unit='epoch'))   
 # ),
-test = dict(vis_dir='vis'),
+test = dict(vis_dir='/home/bingxing2/ailab/zhuangguohang/Astro_SR/Astro_SR/vis/'),
 
 # model = dict(type='Simple_baseline',
 #              n_channels=2, 
@@ -72,17 +72,19 @@ test = dict(vis_dir='vis'),
 #                              dec=32,
 #                              freq=512),   # 3d res for reconstruction
 #              )  
-model = dict(type='Simple_baseline',
-             #n_channels=2, 
-             initializer='gaussian',  #gaussian, kaiming, classifier, xavier
-             bilinear=False,
-               #bilinear cannot reproduce
-             losses=dict(
-                     SmoothL1_loss=dict(type='Smooth_L1', 
-                                        weight=1.0
-                                        ))
-             ),
-
+# model = dict(type='Simple_baseline',
+#              #n_channels=2, 
+#              initializer='gaussian',  #gaussian, kaiming, classifier, xavier
+#              bilinear=False,
+#                #bilinear cannot reproduce
+#              losses=dict(
+#                      SmoothL1_loss=dict(type='Smooth_L1', 
+#                                         weight=1.0
+#                                         ))
+#              ),
+model = dict(type='Restormer',inp_channels=1,out_channels=1,dim=48,num_blocks=[4, 6, 6, 8],
+             num_refinement_blocks=4,heads=[1, 2, 4, 8],ffn_expansion_factor=2.66,
+             bias=True,LayerNorm_type='WithBias',dual_pixel_task=False),
 dataset=dict(type='SR_astro',
           batch_size=8,
           num_worker=6
