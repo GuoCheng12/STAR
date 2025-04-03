@@ -17,7 +17,7 @@ class Tester(object):
                  evalloader, 
                  local_rank=0,
                  ddp=False,
-                 visualize=False,
+                 visualize=True,
                  vis_dir=None):
         self.model = model
         self.evalloader = evalloader
@@ -51,12 +51,12 @@ class Tester(object):
             total_ssim += batch_ssim * len(datalist['hr'])
             total_psnr += batch_psnr * len(datalist['hr'])
             num_samples += len(datalist['hr'])
-            # idx=1
-            # pred = results['pred_img'][idx].numpy()  
-            # target = datalist['hr'][idx].numpy()     
-            # input_img = datalist['input'][idx].numpy()  
-            # name = datalist['filename'][idx]           
-            # vis_astro_SR(pred, target, input_img, name, self.vis_dir)
+            idx=1
+            pred = results['pred_img'][idx].numpy()  
+            target = datalist['hr'][idx].numpy()     
+            input_img = datalist['input'][idx].numpy()  
+            name = datalist['filename'][idx]           
+            vis_astro_SR(pred, target, input_img, name, self.vis_dir)
         if self.ddp:
             total_ssim_tensor = torch.tensor(total_ssim).to('cuda')
             total_psnr_tensor = torch.tensor(total_psnr).to('cuda')

@@ -105,4 +105,4 @@ class Trainer(object):
 
 
     def eval_one_epoch(self):
-        Tester(self.model, self.evalloader, ddp=self.ddp, visualize=True, vis_dir='/home/bingxing2/ailab/scxlab0061/Astro_SR/vis_results').eval()
+        Tester(self.model, self.evalloader, ddp=self.ddp).eval()

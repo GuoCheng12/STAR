@@ -245,7 +245,7 @@ class PromptGenBlock(nn.Module):
 ##########################################################################
 ##---------- PromptIR -----------------------
 @MODEL.register
-class PromptIR(nn.Module):
+class PromptIR(Base_Model):
     def __init__(self, 
         inp_channels=3, 
         out_channels=3, 
@@ -257,9 +257,10 @@ class PromptIR(nn.Module):
         bias = False,
         LayerNorm_type = 'WithBias',   ## Other option 'BiasFree'
         decoder = False,
+        **kwargs
     ):
 
-        super(PromptIR, self).__init__()
+        super(PromptIR, self).__init__(**kwargs)
 
         self.patch_embed = OverlapPatchEmbed(inp_channels, dim)
         
@@ -272,23 +273,23 @@ class PromptIR(nn.Module):
             self.prompt3 = PromptGenBlock(prompt_dim=320,prompt_len=5,prompt_size = 16,lin_dim = 384)
         
         
-        self.chnl_reduce1 = nn.Conv2d(64,64,kernel_size=1,bias=bias)
-        self.chnl_reduce2 = nn.Conv2d(128,128,kernel_size=1,bias=bias)
-        self.chnl_reduce3 = nn.Conv2d(320,256,kernel_size=1,bias=bias)
+        # self.chnl_reduce1 = nn.Conv2d(64,64,kernel_size=1,bias=bias)
+        # self.chnl_reduce2 = nn.Conv2d(128,128,kernel_size=1,bias=bias)
+        # self.chnl_reduce3 = nn.Conv2d(320,256,kernel_size=1,bias=bias)
 
 
 
-        self.reduce_noise_channel_1 = nn.Conv2d(dim + 64,dim,kernel_size=1,bias=bias)
+        # self.reduce_noise_channel_1 = nn.Conv2d(dim + 64,dim,kernel_size=1,bias=bias)
         self.encoder_level1 = nn.Sequential(*[TransformerBlock(dim=dim, num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor, bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_blocks[0])])
         
         self.down1_2 = Downsample(dim) ## From Level 1 to Level 2
 
-        self.reduce_noise_channel_2 = nn.Conv2d(int(dim*2**1) + 128,int(dim*2**1),kernel_size=1,bias=bias)
+        # self.reduce_noise_channel_2 = nn.Conv2d(int(dim*2**1) + 128,int(dim*2**1),kernel_size=1,bias=bias)
         self.encoder_level2 = nn.Sequential(*[TransformerBlock(dim=int(dim*2**1), num_heads=heads[1], ffn_expansion_factor=ffn_expansion_factor, bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_blocks[1])])
         
         self.down2_3 = Downsample(int(dim*2**1)) ## From Level 2 to Level 3
 
-        self.reduce_noise_channel_3 = nn.Conv2d(int(dim*2**2) + 256,int(dim*2**2),kernel_size=1,bias=bias)
+        # self.reduce_noise_channel_3 = nn.Conv2d(int(dim*2**2) + 256,int(dim*2**2),kernel_size=1,bias=bias)
         self.encoder_level3 = nn.Sequential(*[TransformerBlock(dim=int(dim*2**2), num_heads=heads[2], ffn_expansion_factor=ffn_expansion_factor, bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_blocks[2])])
 
         self.down3_4 = Downsample(int(dim*2**2)) ## From Level 3 to Level 4
@@ -319,11 +320,11 @@ class PromptIR(nn.Module):
 
         self.decoder_level1 = nn.Sequential(*[TransformerBlock(dim=int(dim*2**1), num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor, bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_blocks[0])])
         
-        self.refinement = nn.Sequential(*[TransformerBlock(dim=int(dim*2**1), num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor, bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_refinement_blocks)])
+        self.refinement = nn.Sequential(*[TransformerBlock(dim=int(dim*1**1), num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor, bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_refinement_blocks)])
                     
         self.output = nn.Conv2d(int(dim*1**1), out_channels, kernel_size=3, stride=1, padding=1, bias=bias)
 
-    def forward(self, inp_img,targets=None,noise_emb = None):
+    def forward(self, inp_img,targets=None):
 
         inp_enc_level1 = self.patch_embed(inp_img)
 
@@ -375,19 +376,19 @@ class PromptIR(nn.Module):
         
         out_dec_level1 = self.decoder_level1(inp_dec_level1)
 
-
-        out_dec_level1 = self.refinement(out_dec_level1)
         out_dec_level1 = self.up3_1(out_dec_level1)###添加
+        out_dec_level1 = self.refinement(out_dec_level1)
+        
 
         out_dec_level1 = self.output(out_dec_level1)# + inp_img
-        # if self.training:
-        #     losses = dict(l1_loss = (torch.abs(out_dec_level1 - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3))
-        #     total_loss = torch.stack([*losses.values()]).sum()
-        #     return total_loss, losses
-        # else:
-        #     return dict(pred_img = out_dec_level1)
+        if self.training:
+            losses = dict(l1_loss = (torch.abs(out_dec_level1 - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3))
+            total_loss = torch.stack([*losses.values()]).sum()
+            return total_loss, losses
+        else:
+            return dict(pred_img = out_dec_level1)
 
-        return out_dec_level1
+        # return out_dec_level1
 if __name__ == '__main__':
 
     model = PromptIR(inp_channels=1,out_channels=1,dim=48,num_blocks=[4, 6, 6, 8],
