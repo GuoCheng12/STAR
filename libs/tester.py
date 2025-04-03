@@ -17,8 +17,10 @@ class Tester(object):
                  evalloader, 
                  local_rank=0,
                  ddp=False,
-                 visualize=True,
-                 vis_dir=None):
+                 visualize=False,
+                 vis_dir=None,
+                 logger=False):
+        self.logger = logger
         self.model = model
         self.evalloader = evalloader
         self.visualize = visualize
@@ -38,7 +40,8 @@ class Tester(object):
         total_ssim = 0.0
         total_psnr = 0.0
         num_samples = 0
-
+        import pdb
+        # pdb.set_trace()
         for datalist in self.evalloader:  
             infer_datalist = datalist.copy()
             for key in infer_datalist.keys():
@@ -51,12 +54,13 @@ class Tester(object):
             total_ssim += batch_ssim * len(datalist['hr'])
             total_psnr += batch_psnr * len(datalist['hr'])
             num_samples += len(datalist['hr'])
-            idx=1
-            pred = results['pred_img'][idx].numpy()  
-            target = datalist['hr'][idx].numpy()     
-            input_img = datalist['input'][idx].numpy()  
-            name = datalist['filename'][idx]           
-            vis_astro_SR(pred, target, input_img, name, self.vis_dir)
+            if self.visualize:
+                idx=1
+                pred = results['pred_img'][idx].numpy()  
+                target = datalist['hr'][idx].numpy()     
+                input_img = datalist['input'][idx].numpy()  
+                name = datalist['filename'][idx]           
+                vis_astro_SR(pred, target, input_img, name, self.vis_dir)
         if self.ddp:
             total_ssim_tensor = torch.tensor(total_ssim).to('cuda')
             total_psnr_tensor = torch.tensor(total_psnr).to('cuda')
@@ -71,7 +75,9 @@ class Tester(object):
             avg_ssim = total_ssim / num_samples if num_samples > 0 else 0.0
             avg_psnr = total_psnr / num_samples if num_samples > 0 else 0.0
             print(f"Average SSIM: {avg_ssim:.4f}, Average PSNR: {avg_psnr:.4f}")
-            
+            if self.logger:
+                result_epoch = f"Average SSIM: {avg_ssim:.4f}, Average PSNR: {avg_psnr:.4f}"
+                self.logger.info(result_epoch)
         if self.visualize and self.local_rank == 0:
             print("可视化")
             num_samples = len(datalist['hr'])

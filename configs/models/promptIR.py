@@ -1,7 +1,7 @@
 _base_='../default.py'
 seed = 42,
 train = dict(optimizer=dict(lr=1e-4))
-test = dict(vis_dir='/home/bingxing2/ailab/zhuangguohang/Astro_SR/Astro_SR/vis_restormer')
+test = dict(vis_dir='/home/bingxing2/ailab/zhuangguohang/Astro_SR/Astro_SR/vis_promptIR',visualize=True)
 # model = dict(type='SwinIR',
 #              img_size=128, patch_size=1, in_chans=1, out_chans=1,
 #              embed_dim=90, depths=[6, 6, 6, 6], num_heads=[6, 6, 6, 6],

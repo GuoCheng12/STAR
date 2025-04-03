@@ -147,24 +147,22 @@ def init_all(args):
 
 def init_dist_slurm(tcp_port=None, backend='nccl'):
     num_gpus = torch.cuda.device_count()
+    #rank = int(os.environ["SLURM_PROCID"])
     rank = int(os.environ["RANK"])
-    # world_size = int(os.environ["SLURM_NTASKS"])
+    #world_size = int(os.environ["SLURM_NTASKS"])
     world_size = int(os.environ["WORLD_SIZE"])
-    # node_list = os.environ["SLURM_NODELIST"]
-    # addr = subprocess.getoutput(f"scontrol show hostname {node_list} | head -n1")
+    #node_list = os.environ["SLURM_NODELIST"]
+    #addr = subprocess.getoutput(f"scontrol show hostname {node_list} | head -n1")
     # specify master port
-    if "MASTER_PORT" not in os.environ and tcp_port is not None:
-        print("MASTER_PORT not in os.environ")
+    if tcp_port is not None:
         os.environ["MASTER_PORT"] = str(tcp_port)
     elif "MASTER_PORT" not in os.environ:
-        print("MASTER_PORT not in os.environ")
-        os.environ["MASTER_PORT"] = "29501"
-
+        os.environ["MASTER_PORT"] = "32000"
     if "MASTER_ADDR" not in os.environ:
         os.environ["MASTER_ADDR"] = addr
-    # os.environ["WORLD_SIZE"] = str(world_size)
-    # os.environ["LOCAL_RANK"] = str(rank % num_gpus)
-    # os.environ["RANK"] = str(rank)
+    #os.environ["WORLD_SIZE"] = str(world_size)
+    #os.environ["LOCAL_RANK"] = str(rank % num_gpus)
+    #os.environ["RANK"] = str(rank)
 
     torch.cuda.set_device(rank % num_gpus)
 
@@ -260,6 +258,7 @@ def vis_astro_SR(pred, target, input_img, name, vis_dir):
 
     # 调整布局并保存
     plt.tight_layout()
+    os.makedirs(vis_dir, exist_ok=True) if not os.path.exists(vis_dir) else None  
     save_path = os.path.join(vis_dir, f"{name}_vis.png")
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
