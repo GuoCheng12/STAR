@@ -186,7 +186,8 @@ class Upsample(nn.Module):
 
 ##########################################################################
 ##---------- Restormer -----------------------
-class Restormer(nn.Module):
+@MODEL.register
+class Restormer(Base_Model):
     def __init__(self,
                  inp_channels=3,
                  out_channels=3,
@@ -197,10 +198,11 @@ class Restormer(nn.Module):
                  ffn_expansion_factor=2.66,
                  bias=False,
                  LayerNorm_type='WithBias',  ## Other option 'BiasFree'
-                 dual_pixel_task=False  ## True for dual-pixel defocus deblurring only. Also set inp_channels=6
+                 dual_pixel_task=False,
+                 **kwargs  ## True for dual-pixel defocus deblurring only. Also set inp_channels=6
                  ):
 
-        super(Restormer, self).__init__()
+        super(Restormer, self).__init__(**kwargs)
         self.inp_channels = inp_channels
         self.out_channels = out_channels
 
@@ -243,19 +245,21 @@ class Restormer(nn.Module):
             TransformerBlock(dim=int(dim * 2 ** 1), num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor,
                              bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_blocks[0])])
 
-        self.refinement = nn.Sequential(*[
-            TransformerBlock(dim=int(dim * 2 ** 1), num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor,
+        # self.refinement = nn.Sequential(*[
+        #     TransformerBlock(dim=int(dim * 2 ** 1), num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor,
+        #                      bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_refinement_blocks)])
+        self.refinement1 = nn.Sequential(*[
+            TransformerBlock(dim=int(dim * 1 ** 1), num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor,
                              bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_refinement_blocks)])
-
         #### For Dual-Pixel Defocus Deblurring Task ####
         self.dual_pixel_task = dual_pixel_task
         if self.dual_pixel_task:
             self.skip_conv = nn.Conv2d(dim, int(dim * 2 ** 1), kernel_size=1, bias=bias)
         ###########################
+        self.up3_1 = Upsample(int(dim * 2 ** 1)) 
+        self.output = nn.Conv2d(int(dim * 1 ** 1), out_channels, kernel_size=3, stride=1, padding=1, bias=bias)
 
-        self.output = nn.Conv2d(int(dim * 2 ** 1), out_channels, kernel_size=3, stride=1, padding=1, bias=bias)
-
-    def forward(self, inp_img):
+    def forward(self, inp_img,targets=None):
         inp_enc_level1 = self.patch_embed(inp_img)
         out_enc_level1 = self.encoder_level1(inp_enc_level1)
 
@@ -281,18 +285,27 @@ class Restormer(nn.Module):
         inp_dec_level1 = self.up2_1(out_dec_level2)
         inp_dec_level1 = torch.cat([inp_dec_level1, out_enc_level1], 1)
         out_dec_level1 = self.decoder_level1(inp_dec_level1)
+        import pdb
+        # pdb.set_trace()
 
-        out_dec_level1 = self.refinement(out_dec_level1)
-
+        out_dec_level1 = self.up3_1(out_dec_level1)#48,128,128z
+        out_dec_level1 = self.refinement1(out_dec_level1)#96,128,128
+        
         #### For Dual-Pixel Defocus Deblurring Task ####
         if self.dual_pixel_task:
             out_dec_level1 = out_dec_level1 + self.skip_conv(inp_enc_level1)
             out_dec_level1 = self.output(out_dec_level1)
         ###########################
         else:
-            if self.inp_channels != self.out_channels:  # 仅限于多通道输入单通道输出
-                inp_img = inp_img.mean(dim=1, keepdim=True)
-                out_dec_level1 = self.output(out_dec_level1) + inp_img
-            else:
-                out_dec_level1 = self.output(out_dec_level1) + inp_img
-        return out_dec_level1
+            # if self.inp_channels != self.out_channels:  # 仅限于多通道输入单通道输出
+            #     inp_img = inp_img.mean(dim=1, keepdim=True)
+            #     out_dec_level1 = self.output(out_dec_level1) + inp_img
+            # else:
+            out_dec_level1 = self.output(out_dec_level1) #+ inp_img
+        if self.training:
+            losses = dict(l1_loss = (torch.abs(out_dec_level1 - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3))
+            total_loss = torch.stack([*losses.values()]).sum()
+            return total_loss, losses
+        else:
+            return dict(pred_img = out_dec_level1)
+        # return out_dec_level1

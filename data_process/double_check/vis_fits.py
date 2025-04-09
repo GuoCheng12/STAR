@@ -17,11 +17,11 @@ def load_data(file_path):
         eroded_zero_mask = binary_erosion(zero_mask, structure=structure)
         img_data[eroded_zero_mask] = np.nan
 
-        # 步骤 4：生成掩码
         mask = ~np.isnan(img_data)
 
         return img_data, mask
-fits_filepath = "/ailab/user/wuguocheng/Astro_SR/dataset/psf_downsampled/jd8f28020_drc_downsampled.fits"
+
+fits_filepath = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset/psf_hr/hst_15851_56_acs_wfc_f814w_je5656_drc_padded_hr.fits"
 
 hdu = fits.open(fits_filepath)[0]
 print(fits.info(fits_filepath))
@@ -36,4 +36,4 @@ plt.colorbar(label='Intensity')
 plt.title(f"FITS Image: {fits_filepath}")
 plt.xlabel("X (pixels)")
 plt.ylabel("Y (pixels)")
-plt.savefig('/ailab/user/wuguocheng/Astro_SR/vis/result_fits_3.png')
+plt.savefig('/home/bingxing2/ailab/scxlab0061/Astro_SR/vis/test.png')

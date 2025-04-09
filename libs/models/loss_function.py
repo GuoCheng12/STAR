@@ -43,6 +43,13 @@ class Smooth_L1(nn.Module):
         loss_function = nn.SmoothL1Loss()
         return loss_function(inputs, targets)
 
+class L1_loss(nn.Module):
+    def __init__(self):
+        super(L1_loss, self).__init__()
+    def forward(self, inputs, targets):
+        loss_function = nn.L1Loss()
+        return loss_function(inputs, targets)
+        
 class MSE_loss(nn.Module):
     def __init__(self):
         super(MSE_loss, self).__init__()

@@ -10,8 +10,8 @@ from shapely.geometry import Polygon
 import shapely.wkt
 import pdb
 TEMP_NUM = 200
-data_dir = "/ailab/group/pjlab-ai4s/ai4astro/Deep_space_explore/hst_data/"
-output_file = "/ailab/user/wuguocheng/Astro_SR/data_process/split_file/datasetlist.txt"
+data_dir = "/home/bingxing2/ailab/group/ai4astro/Datasets/Astro_SR/psf"
+output_file = "/home/bingxing2/ailab/scxlab0061/Astro_SR/data_process/split_file/datasetlist.txt"
 fits_files = []
 for root, _, files in os.walk(data_dir):
     for file in files:

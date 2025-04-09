@@ -15,10 +15,10 @@ class SR_dataset(Dataset):
 
         if split == 'train':
             with open(kargs['filenames_file_train'], 'r') as f:
-                self.filenames = [line.strip() for line in f.readlines() if line.startswith('train')]
+                self.filenames = [line.strip() for line in f.readlines()]# if line.startswith('train')]
         elif split == 'eval':
             with open(kargs['filenames_file_eval'], 'r') as f:
-                self.filenames = [line.strip() for line in f.readlines() if line.startswith('eval')]
+                self.filenames = [line.strip() for line in f.readlines()]# if line.startswith('eval')]
         else:
             raise ValueError("split must be 'train' or 'eval'")
 
@@ -27,12 +27,16 @@ class SR_dataset(Dataset):
 
     def __getitem__(self, index):
         line = self.filenames[index]
-        _, hr_file_path, lr_file_path = line.split(',')
+        hr_file_path, lr_file_path ,_,_= line.split(',')
         
         hr_data = np.load(hr_file_path, allow_pickle=True).item()
         hr_image = hr_data['image'] 
         mask = hr_data['mask']
-        lr_image = np.load(lr_file_path)
+
+
+        lr_data = np.load(lr_file_path, allow_pickle=True).item()
+        lr_image = lr_data['image'] 
+        lr_mask = lr_data['mask']
         ''' temp for vis
         # from astropy.visualization import (ZScaleInterval, ImageNormalize)
         # import matplotlib.pyplot as plt
@@ -49,7 +53,7 @@ class SR_dataset(Dataset):
         # pdb.set_trace()   
         '''
         hr_image = self.normalize(hr_image, mask)
-        lr_image = self.normalize(lr_image)
+        lr_image = self.normalize(lr_image,lr_mask)
         
         hr_image = np.expand_dims(hr_image, axis=0)
         lr_image = np.expand_dims(lr_image, axis=0)

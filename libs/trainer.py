@@ -47,8 +47,9 @@ class Trainer(object):
         self.rank = local_rank
         logger.info(self.model)
         logger.info(self.optimizer)
+        model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
         if self.ddp:
-            model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
+            # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
             self.model = nn.parallel.DistributedDataParallel(self.model,
                                                              device_ids=[local_rank % torch.cuda.device_count()],
                                                              find_unused_parameters=False)
@@ -64,6 +65,7 @@ class Trainer(object):
             self.train_one_epoch()
             if epoch % self.eval_epoch == 0:
                 self.eval_one_epoch()
+
             if epoch % self.save_ckp_epoch == 0 and self.rank == 0:
                 if self.ddp:
                     torch.save(self.model.module.state_dict(), \
@@ -105,4 +107,4 @@ class Trainer(object):
 
 
     def eval_one_epoch(self):
-        Tester(self.model, self.evalloader, ddp=self.ddp, visualize=True, vis_dir='/home/bingxing2/ailab/scxlab0061/Astro_SR/vis_results').eval()
+        Tester(self.model, self.evalloader, ddp=self.ddp,logger=self.logger, visualize=True, vis_dir='/home/bingxing2/ailab/scxlab0061/Astro_SR/vis/eval_result_swinIR_l2').eval()

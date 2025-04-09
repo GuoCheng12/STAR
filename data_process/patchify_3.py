@@ -9,7 +9,7 @@ def load_data(file_path, hr=True):
     """加载 FITS 文件，返回图像数据和掩码"""
     with fits.open(file_path) as hdul:
         if hr:
-            img_data = hdul[1].data.astype(float)
+            img_data = hdul[0].data.astype(float)
         else:
             img_data = hdul[0].data.astype(float)
         zero_mask = (img_data == 0)
@@ -32,6 +32,7 @@ def patchify_hr(image, mask, patch_size=256, stride=128, useful_region_th=0.8):
     return patches
 
 def get_lr_patch(lr_image, lr_mask, hr_coord, scale_factor=2, lr_patch_size=128, useful_region_th=0.8):
+
     """根据 HR patch 坐标从 LR 图像中提取并筛选 LR patch"""
     x_hr, y_hr = hr_coord
     x_lr = x_hr // scale_factor
@@ -84,6 +85,7 @@ def process_patchify(train_files_path, eval_files_path, dataset_dir, dataload_fi
 
     with open(train_files_path, "r") as f:
         train_files = [line.strip().split(',') for line in f.readlines()]
+
     for hr_path, lr_path in tqdm(train_files, desc="Processing train files"):
         try:
             hr_image, hr_mask = load_data(hr_path, hr=True)
@@ -97,7 +99,7 @@ def process_patchify(train_files_path, eval_files_path, dataset_dir, dataload_fi
             
             if len(patch_pairs) > 0:
                 generate_dataloader_txt(patch_pairs, train_hr_patch_dir, train_lr_patch_dir, train_dataloader_txt, identifier)
-                pdb.set_trace()
+
             else:
                 print(f"warning: {hr_path} No valid patch")
         except Exception as e:
@@ -124,8 +126,8 @@ def process_patchify(train_files_path, eval_files_path, dataset_dir, dataload_fi
             print(f"processing {hr_path} fail: {e}")
 
 if __name__ == "__main__":
-    train_files_path = "/ailab/user/wuguocheng/Astro_SR/data_process/split_file/train_files.txt"
-    eval_files_path = "/ailab/user/wuguocheng/Astro_SR/data_process/split_file/eval_files.txt"
-    dataset_dir = "../dataset"
-    dataload_filename_dir = "../dataload_filename"
+    train_files_path = "/home/bingxing2/ailab/scxlab0061/Astro_SR/data_process/split_file/train_files.txt"
+    eval_files_path = "/home/bingxing2/ailab/scxlab0061/Astro_SR/data_process/split_file/eval_files.txt"
+    dataset_dir = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_new"
+    dataload_filename_dir = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataload_filename"
     process_patchify(train_files_path, eval_files_path, dataset_dir, dataload_filename_dir)

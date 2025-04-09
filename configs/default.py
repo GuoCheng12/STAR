@@ -48,7 +48,7 @@ train = dict(max_epoch=10,
 #                       steps=[300,360],
 #                       steps_unit='epoch'))   
 # ),
-test = dict(vis_dir='vis'),
+test = dict(vis_dir='/home/bingxing2/ailab/zhuangguohang/Astro_SR/Astro_SR/vis/'),
 
 # model = dict(type='Simple_baseline',
 #              n_channels=2, 
@@ -78,14 +78,13 @@ model = dict(type='Simple_baseline',
              bilinear=False,
                #bilinear cannot reproduce
              losses=dict(
-                     SmoothL1_loss=dict(type='Smooth_L1', 
+                     L1_loss=dict(type='L1_loss', 
                                         weight=1.0
                                         ))
              ),
-
 dataset=dict(type='SR_astro',
           batch_size=8,
-          num_worker=6
+          num_worker=6,
                )
 
           

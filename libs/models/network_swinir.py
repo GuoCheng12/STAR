@@ -847,7 +847,8 @@ class SwinIR(Base_Model):
     def forward(self, x, targets=None):
         pred_img = self.forward_inp(x)
         if self.training:
-            losses = dict(l1_loss = (torch.abs(pred_img - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3))
+            #losses = dict(l1_loss = (torch.abs(pred_img - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3))
+            losses = dict(mse_loss=((pred_img - targets['hr']) ** 2 * targets['mask']).sum() / (targets['mask'].sum() + 1e-3))
             total_loss = torch.stack([*losses.values()]).sum()
             return total_loss, losses
         else:
