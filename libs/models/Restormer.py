@@ -303,7 +303,8 @@ class Restormer(Base_Model):
             # else:
             out_dec_level1 = self.output(out_dec_level1) #+ inp_img
         if self.training:
-            losses = dict(l1_loss = (torch.abs(out_dec_level1 - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3))
+            #losses = dict(l1_loss = (torch.abs(out_dec_level1 - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3))
+            losses = dict(mse_loss=((out_dec_level1 - targets['hr']) ** 2 * targets['mask']).sum() / (targets['mask'].sum() + 1e-3))
             total_loss = torch.stack([*losses.values()]).sum()
             return total_loss, losses
         else:

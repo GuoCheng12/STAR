@@ -3,7 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.visualization import ZScaleInterval
 from tqdm import tqdm
-
+import random
+random.seed(42)
 # 设置 Z-scale 归一化函数
 def z_scale_image(image):
     """对图像应用 Z-scale 归一化"""
@@ -13,7 +14,7 @@ def z_scale_image(image):
     return normalized_image
 
 # 可视化 HR 和 LR patch 对，保持 LR 的原始分辨率
-def visualize_patch_pair(hr_patch, lr_patch, identifier, idx, output_dir):
+def visualize_patch_pair(hr_patch, lr_patch, idx, output_dir):
     """可视化 HR 和 LR patch 对，并保存到指定目录"""
     os.makedirs(output_dir, exist_ok=True)
     
@@ -21,7 +22,6 @@ def visualize_patch_pair(hr_patch, lr_patch, identifier, idx, output_dir):
     hr_patch_normalized = z_scale_image(hr_patch)
     lr_patch_normalized = z_scale_image(lr_patch)
     
-    # 创建画布，设置固定大小（以像素为单位）
     dpi = 100  # 设置 DPI，控制像素到英寸的转换
     fig = plt.figure(figsize=(hr_patch.shape[1]/dpi + lr_patch.shape[1]/dpi, max(hr_patch.shape[0], lr_patch.shape[0])/dpi), dpi=dpi)
     
@@ -38,31 +38,45 @@ def visualize_patch_pair(hr_patch, lr_patch, identifier, idx, output_dir):
     ax2.axis('off')
     
     # 保存图像
-    output_path = os.path.join(output_dir, f"{identifier}_patch_{idx}.png")
+    output_path = os.path.join(output_dir, f"patch_{idx}.png")  # 去掉 identifier
     plt.savefig(output_path, dpi=dpi, bbox_inches='tight')
     plt.close()
 
-# 主函数：加载并可视化所有 patch
-def visualize_all_patches(hr_patch_dir, lr_patch_dir, output_dir, identifier):
-    """加载并可视化所有 HR 和 LR patch 对"""
-    hr_files = sorted([f for f in os.listdir(hr_patch_dir) if f.startswith(identifier) and f.endswith('.npy')])
-    lr_files = sorted([f for f in os.listdir(lr_patch_dir) if f.startswith(identifier) and f.endswith('.npy')])
+# 主函数：加载并随机可视化 50 个 patch 对
+def visualize_random_patches(hr_patch_dir, lr_patch_dir, output_dir, num_samples=50):
+    """加载并随机可视化 50 个 HR 和 LR patch 对"""
+    # 获取 HR 和 LR patch 文件列表
+    hr_files = sorted([f for f in os.listdir(hr_patch_dir) if f.endswith('.npy')])
+    lr_files = sorted([f for f in os.listdir(lr_patch_dir) if f.endswith('.npy')])
     
+    # 确保文件数量匹配
     if len(hr_files) != len(lr_files):
         print(f"警告: HR 文件数量 ({len(hr_files)}) 与 LR 文件数量 ({len(lr_files)}) 不一致")
+        return
     
-    for idx, (hr_file, lr_file) in enumerate(tqdm(zip(hr_files, lr_files), total=min(len(hr_files), len(lr_files)), desc="Visualizing patches")):
+    # 生成 HR 和 LR 文件对
+    patch_pairs = list(zip(hr_files, lr_files))
+    
+    # 随机选择 50 个样本
+    if len(patch_pairs) > num_samples:
+        patch_pairs = random.sample(patch_pairs, num_samples)
+    else:
+        print(f"样本数量不足 {num_samples}，实际数量为 {len(patch_pairs)}，将使用所有样本")
+    
+    # 可视化选中的样本
+    for idx, (hr_file, lr_file) in enumerate(tqdm(patch_pairs, desc="Visualizing random patches")):
+        # 加载 HR 和 LR patch 数据
         hr_data = np.load(os.path.join(hr_patch_dir, hr_file), allow_pickle=True).item()
         lr_data = np.load(os.path.join(lr_patch_dir, lr_file), allow_pickle=True).item()
         
         hr_patch = hr_data['image']
         lr_patch = lr_data['image']
         
-        visualize_patch_pair(hr_patch, lr_patch, identifier, idx, output_dir)
+        # 可视化并保存
+        visualize_patch_pair(hr_patch, lr_patch, idx, output_dir)
 
 if __name__ == "__main__":
-    hr_patch_dir = "/ailab/user/wuguocheng/Astro_SR/dataset/train_hr_patch"
-    lr_patch_dir = "/ailab/user/wuguocheng/Astro_SR/dataset/train_lr_patch"
-    output_dir = "/ailab/user/wuguocheng/Astro_SR/vis/temp_npy"
-    identifier = "jd8f28020_drc"
-    visualize_all_patches(hr_patch_dir, lr_patch_dir, output_dir, identifier)
+    hr_patch_dir = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset/train_hr_patch"
+    lr_patch_dir = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset/train_lr_patch"
+    output_dir = "/home/bingxing2/ailab/scxlab0061/Astro_SR/vis/tmp_npy"
+    visualize_random_patches(hr_patch_dir, lr_patch_dir, output_dir, num_samples=50)

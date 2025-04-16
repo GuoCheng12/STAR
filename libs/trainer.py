@@ -107,4 +107,4 @@ class Trainer(object):
 
 
     def eval_one_epoch(self):
-        Tester(self.model, self.evalloader, ddp=self.ddp,logger=self.logger, visualize=True, vis_dir='/home/bingxing2/ailab/scxlab0061/Astro_SR/vis/eval_result_swinIR_l2').eval()
+        Tester(self.model, self.evalloader, ddp=self.ddp,logger=self.logger, visualize=True, vis_dir='/home/bingxing2/ailab/scxlab0061/Astro_SR/vis/eval_result_restormer_l2').eval()

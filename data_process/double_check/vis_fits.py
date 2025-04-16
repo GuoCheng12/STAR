@@ -1,39 +1,39 @@
-import json
+import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
-from astropy.visualization import (ZScaleInterval, ImageNormalize)
-from scipy.ndimage import binary_erosion, generate_binary_structure
-import pdb
-import numpy as np
-# with open("/ailab/user/wuguocheng/Astro_SR/data_process/split_file/train.json", "r") as f:
-#     train_files = json.load(f)
+from astropy.visualization import ZScaleInterval, ImageNormalize
+import json
 
-# fits_filepath = train_files[4]
-def load_data(file_path):
-    with fits.open(file_path) as hdul:
-        img_data = hdul[1].data.astype(float)  
-        zero_mask = (img_data == 0)
-        structure = generate_binary_structure(2, 1)  # 3x3 结构元素
-        eroded_zero_mask = binary_erosion(zero_mask, structure=structure)
-        img_data[eroded_zero_mask] = np.nan
+# 文件路径
+fits_filepath = "/home/bingxing2/ailab/scxlab0061/Astro_SR/data_process/meter/dataset/psf_hr/hst_15851_13_acs_wfc_f814w_je5613_drc_padded_hr.fits"
+json_path = "/home/bingxing2/ailab/scxlab0061/Astro_SR/data_process/meter/dataset/psf_hr/hst_15851_13_acs_wfc_f814w_je5613_drc_stars.json"
 
-        mask = ~np.isnan(img_data)
-
-        return img_data, mask
-
-fits_filepath = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset/psf_hr/hst_15851_56_acs_wfc_f814w_je5656_drc_padded_hr.fits"
-
+# 加载 FITS 文件
 hdu = fits.open(fits_filepath)[0]
-print(fits.info(fits_filepath))
-img_data = hdu.data
-# 
+print(fits.info(fits_filepath))  # 打印 FITS 文件信息
+img_data = hdu.data.astype(float)  # 读取图像数据并转换为浮点型
 
+# 加载恒星信息
+with open(json_path, 'r') as f:
+    stars = json.load(f)
+
+# Z-scale 归一化
 norm = ImageNormalize(img_data, interval=ZScaleInterval())
 
-plt.figure(figsize=(16, 16))
-plt.imshow(img_data, cmap='gray', norm=norm)
+# 可视化
+plt.figure(figsize=(10, 10))
+plt.imshow(img_data, cmap='gray', norm=norm, origin='lower')
+plt.title('FITS Image with Detected Stars')
+plt.xlabel('X (pixels)')
+plt.ylabel('Y (pixels)')
+
+# 标记恒星位置
+for star in stars:
+    x = star['x']
+    y = star['y']
+    plt.scatter(x, y, c='lime', s=5, label='Stars' if star == stars[0] else None)
+
+plt.legend()
 plt.colorbar(label='Intensity')
-plt.title(f"FITS Image: {fits_filepath}")
-plt.xlabel("X (pixels)")
-plt.ylabel("Y (pixels)")
-plt.savefig('/home/bingxing2/ailab/scxlab0061/Astro_SR/vis/test.png')
+plt.tight_layout()
+plt.savefig("/home/bingxing2/ailab/scxlab0061/Astro_SR/data_process/meter/vis/fits_image_with_stars.png")

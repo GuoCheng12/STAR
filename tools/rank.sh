@@ -36,7 +36,7 @@ BATCH_JOB_ID=$5
 echo "$NODE_RANK,$NODES,$NPROC_PER_NODE,$MASTER_ADDR,$BATCH_JOB_ID"
 OUTPUT_LOG="/home/bingxing2/ailab/scxlab0061/Astro_SR/slurm_output/train_rank${NODE_RANK}_${BATCH_JOB_ID}.log"
 
-CONFIG="configs/models/SwinIr.py"
+CONFIG="configs/models/restormer.py"
 
 torchrun \
      --nnodes="${NODES}" \
@@ -44,4 +44,4 @@ torchrun \
      --nproc_per_node="${NPROC_PER_NODE}" \
      --master_addr="${MASTER_ADDR}" \
      --master_port="${MASTER_PORT}" \
-     tools/trainval.py ${CONFIG} --launcher="slurm" --log_dir='log/SwinIR_l2' >> "${OUTPUT_LOG}" 2>&1
+     tools/trainval.py ${CONFIG} --launcher="slurm" --log_dir='log/restormer_l2' >> "${OUTPUT_LOG}" 2>&1

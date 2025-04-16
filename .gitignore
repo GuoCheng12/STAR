@@ -1,5 +1,5 @@
 log/
-dataset/
+
 <<<<<<< HEAD
 data_process/test_output/
 =======
@@ -10,4 +10,9 @@ vis/
 *.out
 *.png
 slurm_output/
-dataset_new/
+dataset_gaussian_airy/
+dataset_gaussian_airy_new/
+dataset_new_gaussian/
+
+data_process/dataset_tmp
+data_process/meter/dataset
