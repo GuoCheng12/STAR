@@ -98,7 +98,7 @@ def build_dataloaders(type, batch_size, num_workers, ddp=False, local_rank=0, wo
     trainset = globals()[type](split='train',**kargs)
     evalset = globals()[type](split='eval',**kargs)
     # temp
-    evalset = Subset(evalset, range(2000))
+    # evalset = Subset(evalset, range(2000))
 
     if ddp:
         train_sampler = DistributedSampler(trainset, world_size, local_rank, shuffle=True)

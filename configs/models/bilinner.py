@@ -5,7 +5,7 @@ test = dict(vis_dir='/home/bingxing2/ailab/zhuangguohang/Astro_SR/Astro_SR/bilin
 
 model = dict(type='Bilinear',         
             scale_factor=2, 
-            mode = 'bicubic',),#bicubic ,  'bilinear'
+            mode = 'bilinear',),#bicubic ,  'bilinear'
 
 
 

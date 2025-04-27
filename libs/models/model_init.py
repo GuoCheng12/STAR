@@ -1,5 +1,16 @@
 import torch.nn as nn
 import pdb
+def weights_init_swinir(m):
+    from timm.models.layers import DropPath, to_2tuple, trunc_normal_
+    #super(SwinIR, self).init_weights()  
+    if isinstance(m, nn.Linear):
+        trunc_normal_(m.weight, std=.02)
+        if isinstance(m, nn.Linear) and m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+    elif isinstance(m, nn.LayerNorm):
+        nn.init.constant_(m.bias, 0)
+        nn.init.constant_(m.weight, 1.0)
+
 
 def weights_init_xavier(m):
     classname = m.__class__.__name__

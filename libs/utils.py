@@ -221,13 +221,13 @@ def fits_vis(ori_array):
     return wave_array
 
 
-def vis_astro_SR(pred, target, input_img, name, vis_dir):
-    # 将输入转换为可视化格式
+def vis_astro_SR(pred, target, input_img, mask, name, vis_dir):
     input_vis = fits_vis(np.squeeze(input_img))
-    pred_vis = fits_vis(np.squeeze(pred))
     target_vis = fits_vis(np.squeeze(target))
-
-    # 获取图像的尺寸
+    
+    pred_masked = np.where(mask, pred, np.nan)
+    pred_vis = fits_vis(np.squeeze(pred_masked))
+    
     input_size = input_vis.shape[0]  # 例如 128
     hr_size = pred_vis.shape[0]      # 例如 256
 
@@ -242,7 +242,7 @@ def vis_astro_SR(pred, target, input_img, name, vis_dir):
     ax1.set_aspect('equal')  # 保持宽高比
     ax1.axis('off')
 
-    # 子图 2：预测高分辨率图像
+    # 子图 2：预测高分辨率图像（应用掩码）
     ax2 = fig.add_subplot(gs[1])
     ax2.imshow(pred_vis, cmap='gray', extent=[0, hr_size, 0, hr_size])
     ax2.set_title('Prediction (HR)')
@@ -262,8 +262,10 @@ def vis_astro_SR(pred, target, input_img, name, vis_dir):
     save_path = os.path.join(vis_dir, f"{name}_vis.png")
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
-    print(f"可视化图像已保存到 {save_path}")
 
+
+import lpips
+# Assuming ssim and psnr are already imported (e.g., from skimage.metrics)
 
 def evaluate_metric_SR(pred, target, mask):
     batch_ssim = 0.0

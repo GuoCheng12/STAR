@@ -1,27 +1,25 @@
 seed = 42,
-train = dict(max_epoch=10,
-            save_ckp_epoch=1,
-            eval_epoch=1,
-            display_iter=10,
-            grad_clip=None, #dict(max_norm=20, norm_type=2),
-            optimizer=dict(
-                type='Adam',
-                lr=1e-3),   
-            scheduler=dict(
-                 warm_up = dict(
-                      type='linear',
-                      ratio=1.0,
-                      step_type='iter',
-                      bound=1, 
-                      bound_unit='epoch',
-                 ),
-                 lr_decay=dict(
-                      type='cos',  #cos, step
-                      step_type='iter',
-                      # decay_ratio=0.1,  # step decay parameters
-                      steps=[40],
-                      steps_unit='epoch')      
-            )),
+train = dict(max_epoch=100,
+             save_ckp_epoch=5,
+             eval_epoch=1,
+             display_iter=10,
+             grad_clip=None,
+            optimizer=dict(type='Adam', lr=1e-4, betas=(0.9, 0.999), weight_decay=0),
+             scheduler=dict(
+                warm_up = dict(
+                type='linear',
+                ratio=0.01, 
+                step_type='iter',
+                bound=1, 
+                bound_unit='epoch'
+             ),
+                lr_decay=dict(
+                    type='cos',
+                    step_type='epoch',
+                    steps=[50],
+                    steps_unit='epoch',
+                )),
+             )
 
 # train = dict(max_epoch=400,
 #                save_ckp_epoch=10,
@@ -78,12 +76,12 @@ model = dict(type='Simple_baseline',
              bilinear=False,
                #bilinear cannot reproduce
              losses=dict(
-                     SmoothL1_loss=dict(type='Smooth_L1', 
+                     L1_loss=dict(type='L1_loss', 
                                         weight=1.0
                                         ))
              ),
 dataset=dict(type='SR_astro',
-          batch_size=8,
+          batch_size=16,
           num_worker=6,
                )
 
