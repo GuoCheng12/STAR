@@ -44,4 +44,4 @@ torchrun \
      --nproc_per_node="${NPROC_PER_NODE}" \
      --master_addr="${MASTER_ADDR}" \
      --master_port="${MASTER_PORT}" \
-     tools/trainval.py ${CONFIG} --launcher="slurm" --log_dir='log/restormer_l2' >> "${OUTPUT_LOG}" 2>&1
+     tools/trainval.py ${CONFIG} --launcher="slurm" --log_dir='log/restormer_l1_fluxloss_l1_attn_map_gaussian_kernel' >> "${OUTPUT_LOG}" 2>&1

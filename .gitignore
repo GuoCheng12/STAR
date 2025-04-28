@@ -15,4 +15,8 @@ dataset_gaussian_airy_new/
 dataset_new_gaussian/
 
 data_process/dataset_tmp
-data_process/meter/dataset
+data_process/meter
+
+data_process/dataload_filename
+Backup_dataset
+tensorboard_runlog

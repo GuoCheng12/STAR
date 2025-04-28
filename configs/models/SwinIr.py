@@ -21,7 +21,7 @@ train = dict(max_epoch=100,
                     steps_unit='epoch',
                 )),
              )
-test = dict(vis_dir='/home/bingxing2/ailab/zhuangguohang/Astro_SR/Astro_SR/vis_SWIMIR',visualize=True)
+#test = dict(vis_dir='/home/bingxing2/ailab/zhuangguohang/Astro_SR/Astro_SR/vis_SWIMIR',visualize=True)
 model = dict(type='SwinIR',
              img_size=128, in_chans=1, out_chans=1,
              embed_dim=90, depths=[6, 6, 6, 6], num_heads=[6, 6, 6, 6],
@@ -44,6 +44,6 @@ dataset = dict(type='SR_dataset',
                batch_size=16,
                num_workers=16,
                root_dir='/ailab/user/wuguocheng/AstroIR/tools/creat_dataset/new_create_dataset/train_patches',
-               filenames_file_train='/home/bingxing2/ailab/scxlab0061/Astro_SR/dataload_filename/train_dataloader.txt',
-               filenames_file_eval='/home/bingxing2/ailab/scxlab0061/Astro_SR/dataload_filename/eval_dataloader.txt'
+               filenames_file_train='/home/bingxing2/ailab/scxlab0061/Astro_SR/dataload_filename/train_dataloader_gaussian_airy.txt',
+               filenames_file_eval='/home/bingxing2/ailab/scxlab0061/Astro_SR/dataload_filename/eval_dataloader_gaussian_airy.txt'
                )

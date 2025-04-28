@@ -88,6 +88,12 @@ def build_trainer(model,
     trainer = Trainer(model, optimizer, scheduler, trainloader, evalloader, logger, **kargs)
     return trainer
 
+def custom_collate_fn(batch):
+    # 过滤掉 None 值
+    batch = [item for item in batch if item is not None]
+    if len(batch) == 0:  # 如果批次为空，返回 None 或默认值
+        return None
+    return torch.utils.data.dataloader.default_collate(batch)
 
 def build_tester(model, evalloader, **kargs):
 
@@ -97,9 +103,9 @@ def build_tester(model, evalloader, **kargs):
 def build_dataloaders(type, batch_size, num_workers, ddp=False, local_rank=0, world_size=None, **kargs):
     trainset = globals()[type](split='train',**kargs)
     evalset = globals()[type](split='eval',**kargs)
-    # temp
+    
+    trainset[0]
     evalset = Subset(evalset, range(2000))
-
     if ddp:
         train_sampler = DistributedSampler(trainset, world_size, local_rank, shuffle=True)
         val_sampler = DistributedSampler(evalset, world_size, local_rank, shuffle=False)
@@ -110,6 +116,7 @@ def build_dataloaders(type, batch_size, num_workers, ddp=False, local_rank=0, wo
                batch_size=batch_size,
                num_workers=num_workers,
                shuffle=(train_sampler is None),
+               collate_fn=custom_collate_fn,
                pin_memory=True,
                drop_last=True,
                worker_init_fn=seed_worker,

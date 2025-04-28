@@ -382,8 +382,17 @@ class PromptIR(Base_Model):
 
         out_dec_level1 = self.output(out_dec_level1)# + inp_img
         if self.training:
-            losses = dict(l1_loss = (torch.abs(out_dec_level1 - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3))
-            total_loss = torch.stack([*losses.values()]).sum()
+            attn_map = targets['attn_map']
+            mask = targets['mask']
+            mask_float = mask.float()
+            l1_loss = (torch.abs(out_dec_level1 - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3)
+            attn_map = torch.where(torch.isnan(attn_map), torch.zeros_like(attn_map), attn_map)
+            masked_attn_map = attn_map * mask_float
+            aux_loss = (torch.abs(out_dec_level1 - targets['hr']) * masked_attn_map).sum() / (masked_attn_map.sum() + 1e-3)
+            #losses = dict(mse_loss=((out_dec_level1 - targets['hr']) ** 2 * targets['mask']).sum() / (targets['mask'].sum() + 1e-3))
+            #losses = dict(l1_loss = (torch.abs(out_dec_level1 - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3))
+            total_loss = l1_loss + 0.1 * aux_loss
+            losses = dict(l1_loss=l1_loss, aux_loss=0.1 * aux_loss)
             return total_loss, losses
         else:
             return dict(pred_img = out_dec_level1)

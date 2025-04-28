@@ -1,7 +1,7 @@
 _base_='../default.py'
 seed = 42,
 train = dict(max_epoch=100,
-             save_ckp_epoch=5,
+             save_ckp_epoch=10,
              eval_epoch=1,
              display_iter=10,
              grad_clip=None,
@@ -21,7 +21,6 @@ train = dict(max_epoch=100,
                     steps_unit='epoch',
                 )),
              )
-test = dict(vis_dir='/home/bingxing2/ailab/zhuangguohang/Astro_SR/Astro_SR/vis_promptIR',visualize=True)
 # model = dict(type='SwinIR',
 #              img_size=128, patch_size=1, in_chans=1, out_chans=1,
 #              embed_dim=90, depths=[6, 6, 6, 6], num_heads=[6, 6, 6, 6],
@@ -43,9 +42,9 @@ model = dict(type='PromptIR',inp_channels=1,out_channels=1,dim=48,num_blocks=[4,
 dataset = dict(type='SR_dataset',
                batch_size=8,
                num_workers=6,
-               root_dir='/home/bingxing2/ailab/zhuangguohang/Astro_SR/Astro_SR/dataset',
-               filenames_file_train='/home/bingxing2/ailab/scxlab0061/Astro_SR/dataload_filename/train_dataloader.txt',
-               filenames_file_eval='/home/bingxing2/ailab/scxlab0061/Astro_SR/dataload_filename/eval_dataloader.txt',
+               root_dir='/ailab/user/wuguocheng/AstroIR/tools/creat_dataset/new_create_dataset/train_patches',
+               filenames_file_train='/home/bingxing2/ailab/scxlab0061/Astro_SR/dataload_filename/train_dataloader_gaussian_airy.txt',
+               filenames_file_eval='/home/bingxing2/ailab/scxlab0061/Astro_SR/dataload_filename/eval_dataloader_gaussian_airy.txt'
                
                )
 #CUDA_VISIBLE_DEVICES=0,1,2,3 bash tools/dist_trainval.sh configs/models/restormer.py

@@ -10,7 +10,9 @@ from tqdm import tqdm
 import torch.distributed as dist
 from .utils import vis_astro_SR, evaluate_metric_SR
 import random
-
+import sep
+from tqdm import tqdm
+from matplotlib.patches import Ellipse
 class Tester(object):
     def __init__(self, 
                  model, 
@@ -35,6 +37,95 @@ class Tester(object):
                                                              find_unused_parameters=False)  
         if self.vis_dir is not None and self.local_rank == 0:
             os.makedirs(vis_dir, exist_ok=True)
+            
+    def test(self):
+        self.model.eval()
+        total_ssim = 0.0
+        total_psnr = 0.0
+        num_samples = 0
+        flux_losses = []  # List to store flux differences for each sample
+        problematic_samples = []  # List to store problematic samples
+
+        for datalist in tqdm(self.evalloader):  
+            infer_datalist = datalist.copy()
+            for key in infer_datalist.keys():
+                if type(infer_datalist[key]) is torch.Tensor:
+                    infer_datalist[key] = infer_datalist[key].to('cuda')
+            with torch.no_grad():
+                results = self.model(infer_datalist['input'], infer_datalist)
+                results = {key: results[key].cpu() if type(results[key]) is torch.Tensor else results[key] for key in results.keys()}
+            batch_ssim, batch_psnr = evaluate_metric_SR(results['pred_img'], datalist['hr'], datalist['mask'])
+            total_ssim += batch_ssim * len(datalist['hr'])
+            total_psnr += batch_psnr * len(datalist['hr'])
+            num_samples += len(datalist['hr'])
+
+            # Photometry and Flux Consistency Loss Calculation
+            for i in range(len(datalist['hr'])):
+                try:
+                    pred_img = results['pred_img'][i].numpy()
+                    gt = datalist['hr'][i].numpy()
+                    mask = datalist['mask'][i].numpy().astype(bool)
+                    flux_gt, sources_gt = self.measure_flux(gt, mask)
+                    flux_pred = self.measure_flux_with_gt_sources(pred_img, sources_gt, mask)
+                    if len(flux_pred) == len(flux_gt):
+                        flux_diff = np.abs(flux_pred - flux_gt)
+                        loss = np.mean(flux_diff)
+                        flux_losses.append(loss)
+                    else:
+                        print(f"Sample {i}: Flux lengths do not match, skipping.")
+                        problematic_samples.append(i)
+                except Exception as e:
+                    print(f"Sample {i} encountered an error: {e}, skipping.")
+                    problematic_samples.append(i)
+
+        # Calculate average flux difference
+        avg_flux_loss = np.mean(flux_losses) if flux_losses else 0.0
+
+        # Output results
+        avg_ssim = total_ssim / num_samples if num_samples > 0 else 0.0
+        avg_psnr = total_psnr / num_samples if num_samples > 0 else 0.0
+        print(f"Average SSIM: {avg_ssim:.4f}, Average PSNR: {avg_psnr:.4f}")
+        print(f"Average Flux Consistency Loss: {avg_flux_loss:.4f}")
+        print(f"Problematic samples: {problematic_samples}")
+
+    def measure_flux(self, image, mask):
+        """对图像进行源检测和测光"""
+        image = image.squeeze()
+        mask = mask.squeeze()
+        try:
+            bkg = sep.Background(image, mask=~mask)
+            image_sub = image - bkg.back()
+            sources = sep.extract(image_sub, 1.5, err=bkg.rms(), mask=~mask)
+            flux, fluxerr, flag = sep.sum_ellipse(
+                image_sub, sources['x'], sources['y'],
+                sources['a'], sources['b'], sources['theta'],
+                2.5, err=bkg.globalrms
+            )
+            valid_idx = ~np.isnan(flux)
+            flux_cleaned = flux[valid_idx]
+            sources_cleaned = sources[valid_idx]
+            return flux_cleaned, sources_cleaned
+        except Exception as e:
+            raise e
+
+    def measure_flux_with_gt_sources(self, image, sources, mask):
+        """使用 gt 图像的源信息对图像进行测光"""
+        image = image.squeeze()
+        mask = mask.squeeze()
+        try:
+            bkg = sep.Background(image, mask=~mask)
+            image_sub = image - bkg.back()
+            flux, fluxerr, flag = sep.sum_ellipse(
+                image_sub, sources['x'], sources['y'],
+                sources['a'], sources['b'], sources['theta'],
+                2.5, err=bkg.rms()
+            )
+            valid_idx = ~np.isnan(flux)
+            flux_cleaned = flux[valid_idx]
+            return flux_cleaned
+        except Exception as e:
+            raise e
+
     def eval(self):
         self.model.eval()
         total_ssim = 0.0

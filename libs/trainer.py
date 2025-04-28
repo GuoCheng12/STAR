@@ -74,7 +74,6 @@ class Trainer(object):
                     torch.save(self.model.state_dict(), \
                                os.path.join(self.log_dir, 'epoch_{}.pth'.format(self.epoch)))
 
-
     def train_one_epoch(self):
         self.model.train()
         for i, datalist in enumerate(self.trainloader):
@@ -107,4 +106,4 @@ class Trainer(object):
 
 
     def eval_one_epoch(self):
-        Tester(self.model, self.evalloader, ddp=self.ddp,logger=self.logger, visualize=True, vis_dir='/home/bingxing2/ailab/scxlab0061/Astro_SR/vis/eval_result_restormer_l2').eval()
+        Tester(self.model, self.evalloader, ddp=self.ddp,logger=self.logger, visualize=True, vis_dir='/home/bingxing2/ailab/scxlab0061/Astro_SR/vis/eval_result_restormer_l1_fluxloss_l1_attn_map').eval()

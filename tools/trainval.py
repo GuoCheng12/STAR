@@ -28,7 +28,7 @@ def main():
     net = build_models(logger, **configs['model']).to('cuda')
     if args.evaluate:
         tester = build_tester(net, evalloader, **configs['test'])
-        tester.eval()
+        tester.test()
         print('done')
         exit()
 

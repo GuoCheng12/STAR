@@ -12,10 +12,10 @@ from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from . import MODEL
 from .base_model import Base_Model
 from .model_init import *
-
-
+import numpy as np
+import sep
 from einops import repeat, rearrange
-
+import pdb
 
 class Mlp(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
@@ -847,13 +847,37 @@ class SwinIR(Base_Model):
     def forward(self, x, targets=None):
         pred_img = self.forward_inp(x)
         if self.training:
-            #losses = dict(l1_loss = (torch.abs(pred_img - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3))
-            losses = dict(mse_loss=((pred_img - targets['hr']) ** 2 * targets['mask']).sum() / (targets['mask'].sum() + 1e-3))
-            total_loss = torch.stack([*losses.values()]).sum()
+            # 提取 targets 中的数据
+            attn_map = targets['attn_map']
+            mask_float = targets['mask']
+            attn_map = torch.nan_to_num(attn_map, nan=0.0)
+            # 计算 L1 损失
+            l1_loss = (torch.abs(pred_img - targets['hr']) * mask_float).sum() / (mask_float.sum() + 1e-3)
+            weighted_diff = torch.abs(pred_img - targets['hr']) * attn_map
+            flux_loss = weighted_diff.sum() / (attn_map.sum() + 1e-3)
+            total_loss = l1_loss + 0.01 * flux_loss
+            losses = dict(l1_loss=l1_loss, flux_loss=0.01*flux_loss)
             return total_loss, losses
         else:
-            return dict(pred_img = pred_img)
-        
+            return dict(pred_img=pred_img)
+
+    
+    def measure_flux_with_gt_sources(self, image, sources, mask, fw, fh):
+        bkg = sep.Background(image, mask=~mask.astype(bool), fw=fw, fh=fh)
+        image_sub = image - bkg.back()
+        flux, fluxerr, flag = sep.sum_ellipse(
+            image_sub,
+            sources['x'], sources['y'],
+            sources['a'], sources['b'], sources['theta'],
+            2.5, 
+            err=bkg.globalrms
+        )
+
+        # 过滤 NaN 值
+        valid_idx = ~np.isnan(flux)
+        flux_pred = flux[valid_idx]
+        return flux_pred 
+    
     def flops(self):
         flops = 0
         H, W = self.patches_resolution

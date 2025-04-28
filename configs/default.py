@@ -48,7 +48,7 @@ train = dict(max_epoch=10,
 #                       steps=[300,360],
 #                       steps_unit='epoch'))   
 # ),
-test = dict(vis_dir='/home/bingxing2/ailab/zhuangguohang/Astro_SR/Astro_SR/vis/'),
+test = dict(vis_dir=None),
 
 # model = dict(type='Simple_baseline',
 #              n_channels=2, 

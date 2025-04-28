@@ -21,7 +21,6 @@ train = dict(max_epoch=100,
                     steps_unit='epoch',
                 )),
              )
-test = dict(vis_dir='/home/bingxing2/ailab/zhuangguohang/Astro_SR/Astro_SR/vis_restormer',visualize=True)
 # model = dict(type='SwinIR',
 #              img_size=128, patch_size=1, in_chans=1, out_chans=1,
 #              embed_dim=90, depths=[6, 6, 6, 6], num_heads=[6, 6, 6, 6],
