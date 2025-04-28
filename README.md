@@ -11,8 +11,8 @@ This repo is used for super-resolution in astronomy.
   - patchify (√) Mar.18 by WGC
   - PSF and downsampling (√) Mar.18 by WGC
 - Running the first super-resolution model (√) Mar.20 by WGC
-- Design consistency loss ()
-- Metric (?) 
+- Design consistency loss (√) Apr 24 by WGC
+- Metric (√) 
 - Run baseline and evaluate ()
   - SwinIR(√) Mar.26 by WGC
   - Unet(√) Mar.27 by WGC
@@ -20,6 +20,8 @@ This repo is used for super-resolution in astronomy.
   - PromptIR(√) Apr.2 by ZGH
   
 ** There is a data bug (Mar.28) 
+
+
 
 - draw paper()
 
