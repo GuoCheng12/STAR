@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from astropy.visualization import ZScaleInterval
 import pdb
 # Specify the .npy file path
-npy_path = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_gaussian_airy/train_hr_patch/hst_10499_02_acs_wfc_f814w_j9bn02_drc_padded_hr_hr_patch_909.npy"
+npy_path = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_gaussian_airy/eval_hr_patch/hst_10152_68_acs_wfc_f814w_j90i68_drc_padded_hr_hr_patch_8.npy"
 
 # Load the .npy file
 data = np.load(npy_path, allow_pickle=True).item()

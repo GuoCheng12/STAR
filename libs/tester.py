@@ -1,6 +1,6 @@
 import os
 import pdb
-
+import torch.nn.functional as F
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -37,7 +37,74 @@ class Tester(object):
                                                              find_unused_parameters=False)  
         if self.vis_dir is not None and self.local_rank == 0:
             os.makedirs(vis_dir, exist_ok=True)
-            
+
+
+    def test_bicubic(self):
+        self.model.eval()  # Set model to evaluation mode
+        total_ssim = 0.0
+        total_psnr = 0.0
+        num_samples = 0
+        flux_losses = []  # List to store flux consistency losses
+        problematic_samples = []  # List to store problematic samples
+
+        for datalist in tqdm(self.evalloader):  
+            infer_datalist = datalist.copy()
+            for key in infer_datalist.keys():
+                if type(infer_datalist[key]) is torch.Tensor:
+                    infer_datalist[key] = infer_datalist[key].to('cuda')
+
+            with torch.no_grad():
+                # Upsample low-resolution image using bicubic interpolation
+                scale_factor = datalist['hr'].shape[-1] / infer_datalist['input'].shape[-1]
+                pred_img = F.interpolate(infer_datalist['input'], scale_factor=scale_factor, mode='bicubic', align_corners=False)
+                pred_img = pred_img.cpu()  # Move to CPU for subsequent calculations
+
+            # Calculate SSIM and PSNR
+            batch_ssim, batch_psnr = evaluate_metric_SR(pred_img, datalist['hr'], datalist['mask'])
+            total_ssim += batch_ssim * len(datalist['hr'])
+            total_psnr += batch_psnr * len(datalist['hr'])
+            num_samples += len(datalist['hr'])
+
+            # Photometry and Flux Consistency Loss Calculation
+            for i in range(len(datalist['hr'])):
+                try:
+                    # Convert tensors to NumPy arrays
+                    pred_img_single = pred_img[i].numpy()
+                    gt = datalist['hr'][i].numpy()
+                    mask = datalist['mask'][i].numpy().astype(bool)
+                    
+                    # Measure flux for GT image
+                    flux_gt, sources_gt = self.measure_flux(gt, mask)
+                    
+                    # Measure flux for predicted image using GT sources
+                    flux_pred = self.measure_flux_with_gt_sources(pred_img_single, sources_gt, mask)
+                    
+                    if len(flux_pred) == len(flux_gt):
+                        flux_diff = np.abs(flux_pred - flux_gt)
+                        loss = np.mean(flux_diff)
+                        flux_losses.append(loss)
+                    else:
+                        print(f"Sample {i}: Flux lengths do not match, skipping.")
+                        problematic_samples.append(i)
+                except Exception as e:
+                    print(f"Sample {i} encountered an error: {e}, skipping.")
+                    problematic_samples.append(i)
+
+        # Calculate averages
+        avg_ssim = total_ssim / num_samples if num_samples > 0 else 0.0
+        avg_psnr = total_psnr / num_samples if num_samples > 0 else 0.0
+        avg_flux_loss = np.mean(flux_losses) if flux_losses else 0.0
+
+        # Output results
+        print(f"Average SSIM: {avg_ssim:.4f}, Average PSNR: {avg_psnr:.4f}")
+        print(f"Average Flux Consistency Loss: {avg_flux_loss:.4f}")
+        print(f"Problematic samples: {problematic_samples}")
+
+        if self.local_rank == 0:
+            result_epoch = f"Average SSIM: {avg_ssim:.4f}, Average PSNR: {avg_psnr:.4f}, Average Flux Loss: {avg_flux_loss:.4f}"
+            self.logger.info(result_epoch)
+
+
     def test(self):
         self.model.eval()
         total_ssim = 0.0
@@ -171,4 +238,5 @@ class Tester(object):
                     mask = datalist['mask'][idx].numpy()      # 传入掩码
                     name = datalist['filename'][idx]           
                     vis_astro_SR(pred, target, input_img, mask, name, self.vis_dir)  # 更新调用
+        return avg_ssim, avg_psnr
 
