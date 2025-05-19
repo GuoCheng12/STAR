@@ -2,8 +2,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from astropy.visualization import (ZScaleInterval, ImageNormalize)
 import pdb
+
+# 15
+# 35
 # 加载 .npy 文件
-patch_data = np.load('/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_gaussian_airy/train_hr_patch/hst_9405_2a_acs_wfc_f814w_j8iy2a_drc_padded_hr_hr_patch_0.npy', allow_pickle=True).item()
+patch_data = np.load('/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_gaussian_airy_new/eval_hr_patch/hst_10152_68_acs_wfc_f814w_j90i68_drc_padded_hr_hr_patch_50.npy', allow_pickle=True).item()
 # 提取图像和掩码
 image = patch_data['image']
 mask = patch_data['mask']

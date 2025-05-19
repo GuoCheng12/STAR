@@ -77,11 +77,12 @@ def process_npy_file(npy_file):
         np.save(npy_file, data)
     except Exception as e:
         print(f"处理 {npy_file} 时出错: {e}")
+        np.save(npy_file, data)
         return npy_file  # 返回错误文件路径
     return None
 
 if __name__ == "__main__":
-    path = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_gaussian_airy/train_hr_patch"
+    path = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_real_world/eval_hr_patch"
     npy_files = glob.glob(os.path.join(path, "*.npy"))
     error_files = []
 

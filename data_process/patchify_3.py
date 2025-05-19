@@ -1,18 +1,13 @@
 import os
+from tqdm import tqdm
 import numpy as np
 from astropy.io import fits
-from scipy.ndimage import binary_erosion, generate_binary_structure
-from tqdm import tqdm
-import json
-import pdb
+from scipy.ndimage import generate_binary_structure, binary_erosion
 
 def load_data(file_path, hr=True):
     """加载 FITS 文件，返回图像数据和掩码"""
     with fits.open(file_path) as hdul:
-        if hr:
-            img_data = hdul[0].data.astype(float)
-        else:
-            img_data = hdul[0].data.astype(float)
+        img_data = hdul[0].data.astype(float)
         zero_mask = (img_data == 0)
         structure = generate_binary_structure(2, 1)
         eroded_zero_mask = binary_erosion(zero_mask, structure=structure)
@@ -20,27 +15,10 @@ def load_data(file_path, hr=True):
         mask = ~np.isnan(img_data)
         return img_data, mask
 
-def load_stars_json(json_path, is_lr=False):
-    """加载 stars.json 或 lr_stars.json 文件"""
-    with open(json_path, 'r') as f:
-        stars = json.load(f)
-    
-    validated_stars = []
-    for star in stars:
-        validated_star = {
-            'x': float(star['x']),
-            'y': float(star['y']),
-            'flux': float(star['flux'])
-        }
-        validated_stars.append(validated_star)
-    
-    return validated_stars
-
-def patchify_hr(image, mask, matched_hr_stars, patch_size=256, stride=128, useful_region_th=0.8):
-    """HR分块（只记录在 LR 中有对应测光的 HR 恒星）"""
+def patchify_hr(image, mask, patch_size=256, stride=128, useful_region_th=0.8):
+    """HR 分块"""
     patches = []
     h, w = image.shape
-    recorded_stars = set()
     
     for row_start in range(0, h, stride):
         for col_start in range(0, w, stride):
@@ -51,35 +29,16 @@ def patchify_hr(image, mask, matched_hr_stars, patch_size=256, stride=128, usefu
             if mask_patch.mean() < useful_region_th:
                 continue
                 
-            hr_stars_in_patch = []
-            for star in matched_hr_stars:
-                star_col = star['x']
-                star_row = star['y']
-                if (col_start <= star_col < col_end) and (row_start <= star_row < row_end):
-                    if mask[int(star_row), int(star_col)]:
-                        hr_stars_in_patch.append({
-                            'rel_x': star_col - col_start,
-                            'rel_y': star_row - row_start,
-                            'flux': star['flux']
-                        })
-                        recorded_stars.add((star_col, star_row))
-            
             patches.append((
                 image[row_start:row_end, col_start:col_end],
                 mask_patch,
-                (row_start, col_start),
-                hr_stars_in_patch
+                (row_start, col_start)
             ))
-    
-    all_stars = {(s['x'], s['y']) for s in matched_hr_stars}
-    missing = all_stars - recorded_stars
-    if missing:
-        print(f"提醒：{len(missing)} 个恒星未被分配到任何HR patch")
     
     return patches
 
-def get_lr_patch(lr_image, lr_mask, hr_coord, lr_stars, scale_factor=2, lr_patch_size=128, useful_region_th=0.8):
-    """生成LR patch（记录 LR 图像中的恒星）"""
+def get_lr_patch(lr_image, lr_mask, hr_coord, scale_factor=2, lr_patch_size=128, useful_region_th=0.8):
+    """生成 LR patch"""
     hr_row_start, hr_col_start = hr_coord
     lr_row_start = int(hr_row_start / scale_factor)
     lr_col_start = int(hr_col_start / scale_factor)
@@ -92,48 +51,35 @@ def get_lr_patch(lr_image, lr_mask, hr_coord, lr_stars, scale_factor=2, lr_patch
     if lr_mask_patch.mean() < useful_region_th:
         return None
     
-    lr_stars_in_patch = []
-    for star in lr_stars:
-        lr_col = star['x']
-        lr_row = star['y']
-        if (lr_col_start <= lr_col < lr_col_end) and (lr_row_start <= lr_row < lr_row_end):
-            if lr_mask[int(lr_row), int(lr_col)]:
-                lr_stars_in_patch.append({
-                    'rel_x': lr_col - lr_col_start,
-                    'rel_y': lr_row - lr_row_start,
-                    'flux': star['flux']
-                })
-    
     return (
         lr_image[lr_row_start:lr_row_end, lr_col_start:lr_col_end],
         lr_mask_patch,
-        (lr_row_start, lr_col_start),
-        lr_stars_in_patch
+        (lr_row_start, lr_col_start)
     )
 
-def generate_patch_pairs(hr_image, hr_mask, lr_image, lr_mask, matched_hr_stars, lr_stars, hr_patch_size=256, lr_patch_size=128, stride=128, scale_factor=2, useful_region_th=0.8):
+def generate_patch_pairs(hr_image, hr_mask, lr_image, lr_mask, hr_patch_size=256, lr_patch_size=128, stride=128, scale_factor=2, useful_region_th=0.8):
     """生成 HR 和 LR 的 patch 对"""
     patch_pairs = []
-    hr_patches = patchify_hr(hr_image, hr_mask, matched_hr_stars, hr_patch_size, stride, useful_region_th)
+    hr_patches = patchify_hr(hr_image, hr_mask, hr_patch_size, stride, useful_region_th)
     
-    for hr_patch, hr_mask_patch, hr_coord, hr_stars_in_patch in hr_patches:
-        lr_patch_info = get_lr_patch(lr_image, lr_mask, hr_coord, lr_stars, scale_factor, lr_patch_size, useful_region_th)
+    for hr_patch, hr_mask_patch, hr_coord in hr_patches:
+        lr_patch_info = get_lr_patch(lr_image, lr_mask, hr_coord, scale_factor, lr_patch_size, useful_region_th)
         if lr_patch_info:
-            lr_patch, lr_mask_patch, lr_coord, lr_stars_in_patch = lr_patch_info
+            lr_patch, lr_mask_patch, lr_coord = lr_patch_info
             patch_pairs.append((
-                hr_patch, hr_mask_patch, hr_coord, hr_stars_in_patch,
-                lr_patch, lr_mask_patch, lr_coord, lr_stars_in_patch
+                hr_patch, hr_mask_patch, hr_coord,
+                lr_patch, lr_mask_patch, lr_coord
             ))
     return patch_pairs
 
 def generate_dataloader_txt(patch_pairs, hr_patch_dir, lr_patch_dir, dataloader_txt, identifier):
     """保存 HR 和 LR patch 并生成 dataloader.txt"""
     with open(dataloader_txt, "a") as f:
-        for idx, (hr_patch, hr_mask, hr_coord, hr_stars, lr_patch, lr_mask, lr_coord, lr_stars) in enumerate(patch_pairs):
+        for idx, (hr_patch, hr_mask, hr_coord, lr_patch, lr_mask, lr_coord) in enumerate(patch_pairs):
             hr_patch_path = os.path.join(hr_patch_dir, f"{identifier}_hr_patch_{idx}.npy")
-            np.save(hr_patch_path, {"image": hr_patch, "mask": hr_mask, "coord": hr_coord, "stars": hr_stars})
+            np.save(hr_patch_path, {"image": hr_patch, "mask": hr_mask, "coord": hr_coord})
             lr_patch_path = os.path.join(lr_patch_dir, f"{identifier}_lr_patch_{idx}.npy")
-            np.save(lr_patch_path, {"image": lr_patch, "mask": lr_mask, "coord": lr_coord, "stars": lr_stars})
+            np.save(lr_patch_path, {"image": lr_patch, "mask": lr_mask, "coord": lr_coord})
             f.write(f"{hr_patch_path},{lr_patch_path},{hr_coord}\n")
 
 def process_patchify(train_files_path, eval_files_path, dataset_dir, dataload_filename_dir, hr_patch_size=256, lr_patch_size=128, stride=128, useful_region_th=0.8, scale_factor=2):
@@ -158,15 +104,13 @@ def process_patchify(train_files_path, eval_files_path, dataset_dir, dataload_fi
     with open(train_files_path, "r") as f:
         train_files = [line.strip().split(',') for line in f.readlines()]
 
-    for hr_path, lr_path, stars_json_path, lr_stars_json_path in tqdm(train_files, desc="Processing train files"):
+    for hr_path, lr_path in tqdm(train_files, desc="Processing train files"):
         try:
             hr_image, hr_mask = load_data(hr_path, hr=True)
             lr_image, lr_mask = load_data(lr_path, hr=False)
-            matched_hr_stars = load_stars_json(stars_json_path, is_lr=False)
-            lr_stars = load_stars_json(lr_stars_json_path, is_lr=True)
             identifier = os.path.basename(hr_path).replace(".fits", "").replace(".gz", "")
             print(f"processing {identifier}")
-            patch_pairs = generate_patch_pairs(hr_image, hr_mask, lr_image, lr_mask, matched_hr_stars, lr_stars,
+            patch_pairs = generate_patch_pairs(hr_image, hr_mask, lr_image, lr_mask,
                                                hr_patch_size=hr_patch_size, lr_patch_size=lr_patch_size, 
                                                stride=stride, scale_factor=scale_factor, useful_region_th=useful_region_th)
             if len(patch_pairs) > 0:
@@ -179,14 +123,12 @@ def process_patchify(train_files_path, eval_files_path, dataset_dir, dataload_fi
     with open(eval_files_path, "r") as f:
         eval_files = [line.strip().split(',') for line in f.readlines()]
 
-    for hr_path, lr_path, stars_json_path, lr_stars_json_path in tqdm(eval_files, desc="Processing eval files"):
+    for hr_path, lr_path in tqdm(eval_files, desc="Processing eval files"):
         try:
             hr_image, hr_mask = load_data(hr_path, hr=True)
             lr_image, lr_mask = load_data(lr_path, hr=False)
-            matched_hr_stars = load_stars_json(stars_json_path, is_lr=False)
-            lr_stars = load_stars_json(lr_stars_json_path, is_lr=True)
             identifier = os.path.basename(hr_path).replace(".fits", "").replace(".gz", "")
-            patch_pairs = generate_patch_pairs(hr_image, hr_mask, lr_image, lr_mask, matched_hr_stars, lr_stars,
+            patch_pairs = generate_patch_pairs(hr_image, hr_mask, lr_image, lr_mask,
                                                hr_patch_size=hr_patch_size, lr_patch_size=lr_patch_size, 
                                                stride=stride, scale_factor=scale_factor, useful_region_th=useful_region_th)
             if len(patch_pairs) > 0:
@@ -197,8 +139,8 @@ def process_patchify(train_files_path, eval_files_path, dataset_dir, dataload_fi
             print(f"processing {hr_path} fail: {e}")
 
 if __name__ == "__main__":
-    train_files_path = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_gaussian_airy_new/split_file/train_files.txt"
-    eval_files_path = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_gaussian_airy_new/split_file/eval_files.txt"
-    dataset_dir = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_gaussian_airy_new/"
-    dataload_filename_dir = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_gaussian_airy_new/dataload_filename"
+    train_files_path = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_real_world/split_file/train_files.txt"
+    eval_files_path = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_real_world/split_file/eval_files.txt"
+    dataset_dir = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_real_world/"
+    dataload_filename_dir = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_real_world/dataload_filename"
     process_patchify(train_files_path, eval_files_path, dataset_dir, dataload_filename_dir)

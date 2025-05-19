@@ -21,3 +21,15 @@ data_process/dataload_filename
 Backup_dataset
 tensorboard_runlog
 runs
+
+hf_data
+dataset_real_world
+
+dataset_parquet
+dataset_parquet_new
+
+
+data_process/double_check
+data_process/split_file
+raw_data
+upload_data

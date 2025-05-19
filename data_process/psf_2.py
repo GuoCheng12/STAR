@@ -6,19 +6,11 @@ from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.convolution import convolve
 from astropy.modeling.functional_models import Gaussian2D, AiryDisk2D
-from astropy.stats import sigma_clipped_stats
-from photutils.detection import DAOStarFinder
-from photutils.psf import CircularGaussianPRF, PSFPhotometry
-from photutils.background import Background2D, MedianBackground
 from reproject import reproject_exact
 import numpy as np
 from shapely.wkt import loads
-from astropy.table import Table
-import json
 import pdb
-from photutils.aperture import CircularAperture, aperture_photometry
-
-def generate_psf(psf_type=None, sigma=None, sigma_min=0.8, sigma_max=1.2, radius=None, radius_min=1.5, radius_max=1.9, size=15):
+def generate_psf(psf_type=None, sigma=None, sigma_min=0.8, sigma_max=1.2, radius=None, radius_min=1.9, radius_max=2.2, size=15):
     if psf_type is None:
         psf_type = random.choice(['gaussian', 'airy'])
     
@@ -68,99 +60,6 @@ def load_fits(file_path):
         
         return image_clipped, mask, wcs
 
-def perform_psf_photometry(image, mask):
-    bkg = Background2D(image, (64, 64), filter_size=(3, 3), 
-                       bkg_estimator=MedianBackground(), mask=~mask)
-    data_sub = image - bkg.background
-    data_sub_masked = np.where(mask, data_sub, np.nan)
-
-    mean, median, std = sigma_clipped_stats(data_sub_masked, sigma=3.0)
-    daofind = DAOStarFinder(fwhm=3.0, threshold=8.0 * std)
-    sources_tbl = daofind(data_sub_masked)
-
-    if sources_tbl is None or len(sources_tbl) == 0:
-        print("未在图像中检测到恒星！")
-        return []
-
-    sources_tbl.rename_column('xcentroid', 'x_0')
-    sources_tbl.rename_column('ycentroid', 'y_0')
-    sources_tbl.rename_column('flux', 'flux_0')
-    psf_model = CircularGaussianPRF(fwhm=3.0)
-    psf_model.x_0.fixed = False
-    psf_model.y_0.fixed = False
-    psf_model.flux.fixed = False
-    psf_model.fwhm.fixed = True
-    photometry = PSFPhotometry(psf_model, fit_shape=(13, 13), aperture_radius=7.0)
-    phot_table = photometry(data_sub_masked, init_params=sources_tbl[['x_0', 'y_0', 'flux_0']])
-
-    stars = []
-    for row in phot_table:
-        x = float(row['x_fit'])
-        y = float(row['y_fit'])
-        if 0 <= y < mask.shape[0] and 0 <= x < mask.shape[1] and mask[int(np.round(y)), int(np.round(x))]:
-            stars.append({'x': x, 'y': y, 'flux': float(row['flux_fit'])})
-    return stars
-
-def perform_psf_photometry_lr(lr_image, lr_mask, hr_stars, hr_wcs, lr_wcs, scale_factor=2):
-    """
-    在 LR 图像上进行 PSF 测光，使用 HR 图像的恒星位置（通过 WCS 映射到 LR 坐标系），只优化 flux。
-    只保留在 LR 中成功拟合的恒星，并返回匹配的 HR 恒星子集。
-    
-    参数:
-    - lr_image: LR 图像数据 (numpy array)
-    - lr_mask: LR 图像的掩码 (boolean array, True 表示有效像素)
-    - hr_stars: HR 图像中检测到的恒星列表，包含 'x'、'y' 和 'flux'
-    - hr_wcs: HR 图像的 WCS 对象 (astropy.wcs.WCS)
-    - lr_wcs: LR 图像的 WCS 对象 (astropy.wcs.WCS)
-    - scale_factor: 下采样因子 (int, 默认值为 2，仅用于参数调整)
-    
-    返回:
-    - lr_stars: LR 图像中测光得到的恒星列表，包含 'x'、'y' 和 'flux'
-    - matched_hr_stars: 与 LR 恒星匹配的 HR 恒星子集
-    """
-    bkg = Background2D(lr_image, (64 // scale_factor, 64 // scale_factor), filter_size=(3, 3), 
-                       bkg_estimator=MedianBackground(), mask=~lr_mask)
-    data_sub = lr_image - bkg.background
-    data_sub_masked = np.where(lr_mask, data_sub, np.nan)
-    
-    positions = []
-    for star in hr_stars:
-        ra, dec = hr_wcs.pixel_to_world_values(star['x'], star['y'])
-        x_lr, y_lr = lr_wcs.world_to_pixel_values(ra, dec)
-        positions.append((x_lr, y_lr))
-
-    flux_init = [star['flux'] for star in hr_stars]
-    
-    lr_stars_init = [{'x_init': pos[0], 'y_init': pos[1], 'flux_init': flux} 
-                     for pos, flux in zip(positions, flux_init)]
-    init_params = Table(rows=lr_stars_init, names=('x_init', 'y_init', 'flux_init'))
-
-    psf_model = CircularGaussianPRF(fwhm=3.0 / scale_factor)
-    psf_model.x_0.fixed = True
-    psf_model.y_0.fixed = True
-    psf_model.flux.fixed = False
-    psf_model.fwhm.fixed = True
-
-    fit_shape = (13 // scale_factor if 13 // scale_factor % 2 == 1 else 13 // scale_factor + 1, 
-                 13 // scale_factor if 13 // scale_factor % 2 == 1 else 13 // scale_factor + 1)
-    aperture_radius_psf = 7.0 / scale_factor
-
-    photometry = PSFPhotometry(psf_model, fit_shape=fit_shape, aperture_radius=aperture_radius_psf)
-    phot_table = photometry(data_sub_masked, mask=~lr_mask, init_params=init_params)
-
-    lr_stars = []
-    matched_hr_stars = []
-    for i, row in enumerate(phot_table):
-        x = float(row['x_fit'])
-        y = float(row['y_fit'])
-        if 0 <= y < lr_mask.shape[0] and 0 <= x < lr_mask.shape[1] and lr_mask[int(np.round(y)), int(np.round(x))]:
-            lr_stars.append({'x': x, 'y': y, 'flux': float(row['flux_fit'])})
-            matched_hr_stars.append(hr_stars[i])
-
-    filtered_lr_stars = len(init_params) - len(lr_stars)
-    print(f"Number of LR stars filtered out: {filtered_lr_stars}")
-    return lr_stars, matched_hr_stars
-
 def apply_psf(image, psf, mask=None):
     if mask is None:
         mask = ~np.isnan(image)
@@ -168,6 +67,60 @@ def apply_psf(image, psf, mask=None):
     blurred_image = convolve(image_temp, psf, normalize_kernel=True)
     blurred_image[~mask] = np.nan
     return blurred_image
+
+def apply_poisson_noise(image, mask, scale=100, normalize=False):
+    """
+    向图像的正数区域添加泊松噪声，负数和 NaN 区域保持不变。
+    
+    参数:
+        image (numpy.ndarray): 输入图像，包含 NaN 区域。
+        mask (numpy.ndarray): 布尔掩码，True 表示有效区域。
+        scale (float): 缩放因子，控制噪声强度。
+        normalize (bool): 是否对图像进行归一化。
+    
+    返回:
+        numpy.ndarray: 添加噪声后的图像，负数和 NaN 区域保持不变。
+    """
+    # 创建图像副本以保留 NaN 区域
+    noisy_image = np.copy(image)
+    
+    # 提取有效区域的像素值
+    valid_image = image[mask]
+    
+    # 在有效区域内分离正数区域
+    positive_mask = valid_image >= 0
+    
+    # 获取正数区域的值
+    positive_values = valid_image[positive_mask]
+    
+    if normalize:
+        # 对正数区域进行归一化
+        image_max = np.max(positive_values)
+        if image_max > 0:
+            image_normalized = positive_values / image_max
+        else:
+            image_normalized = positive_values
+        # 缩放归一化图像
+        scaled_image = image_normalized * scale
+    else:
+        # 直接缩放正数区域
+        scaled_image = positive_values * scale
+    
+    # 添加泊松噪声
+    noisy_positive = np.random.poisson(scaled_image)
+    
+    if normalize:
+        # 恢复原始范围
+        noisy_positive = (noisy_positive / scale) * image_max
+    else:
+        noisy_positive = noisy_positive / scale
+    
+    # 将噪声值填充到正数区域
+    positive_indices = np.where(mask & (image >= 0))
+    noisy_image[positive_indices] = noisy_positive
+    
+    # 负数和 NaN 区域已通过副本保留不变
+    return noisy_image
 
 def pad_to_multiple(image, mask, wcs, multiple=256, pad_value=np.nan):
     h, w = image.shape
@@ -211,34 +164,23 @@ def process_single_file(file_data, lr_output_dir, hr_output_dir, scale_factor, p
         
         os.makedirs(hr_output_dir, exist_ok=True)
         os.makedirs(lr_output_dir, exist_ok=True)
-
-        hr_stars = perform_psf_photometry(padded_image, padded_mask)
         
-        psf = generate_psf(psf_type, sigma, sigma_min, sigma_max, radius, radius_min, radius_max)
-        blurred_image = apply_psf(padded_image, psf, mask=padded_mask)
-        downsampled_image, target_wcs = downsample_image(blurred_image, padded_wcs, scale_factor)
+        # First degradation: Gaussian PSF + light Poisson noise
+        gaussian_psf = generate_psf('gaussian', sigma, sigma_min, sigma_max)
+        blurred_image_gaussian = apply_psf(padded_image, gaussian_psf, mask=padded_mask)
+        noisy_image = apply_poisson_noise(blurred_image_gaussian, padded_mask, scale=1000, normalize=True)
+        # Downsample after first degradation
+        downsampled_image, target_wcs = downsample_image(noisy_image, padded_wcs, scale_factor)
         lr_mask = ~np.isnan(downsampled_image)
         
-        lr_stars, matched_hr_stars = perform_psf_photometry_lr(downsampled_image, lr_mask, hr_stars, padded_wcs, target_wcs, scale_factor)
-        
-        stars_file = os.path.join(hr_output_dir, f"{identifier}_stars.json")
-        with open(stars_file, 'w') as f:
-            json.dump(matched_hr_stars, f, indent=4)
-        
-        lr_stars_file = os.path.join(lr_output_dir, f"{identifier}_lr_stars.json")
-        if not lr_stars:
-            print(f"Warning: No stars detected in LR image for {identifier}")
-        else:
-            with open(lr_stars_file, 'w') as f:
-                json.dump(lr_stars, f, indent=4)
+        # Second degradation: Airy PSF
+        airy_psf = generate_psf('airy', radius=radius, radius_min=radius_min, radius_max=radius_max)
+        downsampled_image_airy = apply_psf(downsampled_image, airy_psf, mask=lr_mask)
         
         padded_hr_path = save_padded_hr_image(padded_image, padded_wcs, hr_output_dir, identifier)
-        lr_path = save_downsampled_image(downsampled_image, target_wcs, lr_output_dir, identifier)
-        print(f"NaN of HR stars: {len(hr_stars) - len(matched_hr_stars)}")
-        print(f"Number of matched HR stars: {len(matched_hr_stars)}")
-        print(f"Number of LR stars: {len(lr_stars)}")
+        lr_path = save_downsampled_image(downsampled_image_airy, target_wcs, lr_output_dir, identifier)
         
-        return f"{padded_hr_path},{lr_path},{stars_file},{lr_stars_file}"
+        return f"{padded_hr_path},{lr_path}"
     except Exception as e:
         print(f"Processing {fits_filepath} fail: {e}")
         return None
@@ -308,13 +250,13 @@ if __name__ == "__main__":
     parser.add_argument("--sigma_min", type=float, default=0.8, help="Minimum sigma for Gaussian PSF")
     parser.add_argument("--sigma_max", type=float, default=1.2, help="Maximum sigma for Gaussian PSF")
     parser.add_argument("--radius", type=float, default=None, help="Fixed radius for Airy PSF")
-    parser.add_argument("--radius_min", type=float, default=1.5, help="Minimum radius for Airy PSF")
-    parser.add_argument("--radius_max", type=float, default=1.9, help="Maximum radius for Airy PSF")
+    parser.add_argument("--radius_min", type=float, default=1.9, help="Minimum radius for Airy PSF")
+    parser.add_argument("--radius_max", type=float, default=2.2, help="Maximum radius for Airy PSF")
     parser.add_argument("--scale_factor", type=int, default=2, help="Downsampling factor (default: 2)")
-    parser.add_argument("--datasetlist_path", type=str, default="/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_gaussian_airy_new/split_file/datasetlist.txt", help="Path to dataset list file")
-    parser.add_argument("--lr_output_dir", type=str, default="/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_gaussian_airy_new/psf_lr", help="Directory to save LR images")
-    parser.add_argument("--hr_output_dir", type=str, default="/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_gaussian_airy_new/psf_hr", help="Directory to save HR images")
-    parser.add_argument("--split_file_dir", type=str, default="/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_gaussian_airy_new/split_file", help="Directory to save split files")
+    parser.add_argument("--datasetlist_path", type=str, default="/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_real_world/split_file/datasetlist.txt", help="Path to dataset list file")
+    parser.add_argument("--lr_output_dir", type=str, default="/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_real_world/psf_lr", help="Directory to save LR images")
+    parser.add_argument("--hr_output_dir", type=str, default="/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_real_world/psf_hr", help="Directory to save HR images")
+    parser.add_argument("--split_file_dir", type=str, default="/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_real_world/split_file", help="Directory to save split files")
     
     args = parser.parse_args()
     

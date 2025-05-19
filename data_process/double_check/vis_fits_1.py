@@ -7,10 +7,10 @@ from photutils.background import Background2D, MedianBackground
 from astropy.stats import sigma_clip
 
 # FITS 文件路径
-fits_filepath = "/home/bingxing2/ailab/group/ai4astro/Datasets/Astro_SR/origin_fits/hst_15851_13_acs_wfc_f814w_je5613_drc.fits"
+fits_filepath = "/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_real_world/hst_10152_05_acs_wfc_f814w_j90i05_drc_padded_hr.fits"
 
 # 打开 FITS 文件并获取图像数据
-hdu = fits.open(fits_filepath)[1]
+hdu = fits.open(fits_filepath)[0]
 print(fits.info(fits_filepath))  # 显示 FITS 文件信息
 img_data = hdu.data
 
@@ -34,4 +34,4 @@ plt.colorbar(label='Intensity')
 plt.title(f"FITS Image with Sigma Clipping: {fits_filepath}")
 plt.xlabel("X (pixels)")
 plt.ylabel("Y (pixels)")
-plt.savefig('/home/bingxing2/ailab/scxlab0061/Astro_SR/vis/test.png')
+plt.savefig('/home/bingxing2/ailab/scxlab0061/Astro_SR/vis/test1.png')

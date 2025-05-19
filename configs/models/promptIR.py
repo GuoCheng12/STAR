@@ -43,8 +43,7 @@ dataset = dict(type='SR_dataset',
                batch_size=8,
                num_workers=6,
                root_dir='/ailab/user/wuguocheng/AstroIR/tools/creat_dataset/new_create_dataset/train_patches',
-               filenames_file_train='/home/bingxing2/ailab/scxlab0061/Astro_SR/dataload_filename/train_dataloader_gaussian_airy.txt',
-               filenames_file_eval='/home/bingxing2/ailab/scxlab0061/Astro_SR/dataload_filename/eval_dataloader_gaussian_airy.txt'
-               
+               filenames_file_train='/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_real_world/dataload_filename/train_dataloader.txt',
+               filenames_file_eval='/home/bingxing2/ailab/scxlab0061/Astro_SR/dataset_real_world/dataload_filename/eval_dataloader.txt'
                )
 #CUDA_VISIBLE_DEVICES=0,1,2,3 bash tools/dist_trainval.sh configs/models/restormer.py

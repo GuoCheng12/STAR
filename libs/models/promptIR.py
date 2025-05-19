@@ -391,8 +391,8 @@ class PromptIR(Base_Model):
             l1_loss = (torch.abs(pred_img - targets['hr']) * mask_float).sum() / (mask_float.sum() + 1e-3)
             weighted_diff = torch.abs(pred_img - targets['hr']) * attn_map
             flux_loss = weighted_diff.sum() / (attn_map.sum() + 1e-3)
-            total_loss = l1_loss
-            losses = dict(l1_loss=l1_loss)
+            total_loss = l1_loss + 0.01 * flux_loss
+            losses = dict(l1_loss=l1_loss, flux_loss=0.01 * flux_loss)
             return total_loss, losses
         else:
             return dict(pred_img=pred_img)

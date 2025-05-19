@@ -127,7 +127,7 @@ class Trainer(object):
 
 
     def eval_one_epoch(self):
-        ssim, psnr = Tester(self.model, self.evalloader, ddp=self.ddp,logger=self.logger, visualize=True, vis_dir='/home/bingxing2/ailab/scxlab0061/Astro_SR/vis/eval_result_rcan_flux').eval()
+        ssim, psnr = Tester(self.model, self.evalloader, ddp=self.ddp,logger=self.logger, visualize=True, vis_dir='/home/bingxing2/ailab/scxlab0061/Astro_SR/vis/eval_result_promptIR_real_world_l1_flux').eval()
         # Add evaluation metrics to TensorBoard
         if not self.ddp or (self.ddp and self.rank == 0):
             self.writer.add_scalar('Eval/SSIM', ssim, self.epoch)
