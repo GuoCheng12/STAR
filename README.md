@@ -1,28 +1,15 @@
-# Astro_SR
-This repo is used for super-resolution in astronomy.
+# STAR
+This is the official codebase of the paper: **STAR: A Benchmark for Astronomical Star Fields Super-Resolution**
+![Overview](./overview/fig1.pdf)
 
-## TODO list
-- Refactoring the code (√) Mar.20 by WGC
-  - Rebuild the training-evaluation code (√) Mar.19 by WGC
-  - Rebuild modules of model, logs (√) Mar. 19 by WGC
-  - 
-- Redo Dataset (√)  Mar.19 by WGC 
-  - Split the data set (according to wcs) (√) Mar.17 by WGC
-  - patchify (√) Mar.18 by WGC
-  - PSF and downsampling (√) Mar.18 by WGC
-- Running the first super-resolution model (√) Mar.20 by WGC
-- Design consistency loss (√) Apr 24 by WGC
-- Metric (√) 
-- Run baseline and evaluate ()
-  - SwinIR(√) Mar.26 by WGC
-  - Unet(√) Mar.27 by WGC
-  - Restormer(√) Mar.28 by ZGH
-  - PromptIR(√) Apr.2 by ZGH
-  
-** There is a data bug (Mar.28) 
+## License
+The STAR dataset are erleased under MIT license.
+
+## STAR datasets
+We propose STAR, a large-scale astronomical SR dataset containing 54,738 flux-consistent star field image pairs covering wide celestial regions. These pairs combine Hubble Space Telescope high-resolution observations with physically faithful low-resolution counterparts generated through a flux-preserving data generation pipeline, enabling systematic development of field-level ASR models.
+
+### Download
+You can download the STAR dataset from this [text](https://huggingface.co/datasets/KUOCHENG/STAR) (Will be full complete...)
 
 
 
-- draw paper()
-
-## Training
