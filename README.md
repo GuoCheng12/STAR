@@ -1,6 +1,6 @@
 # STAR
 This is the official codebase of the paper: **STAR: A Benchmark for Astronomical Star Fields Super-Resolution**
-![Overview](./overview/fig1.pdf)
+![Overview](./overview/picture.jpg)
 
 ## License
 The STAR dataset are erleased under MIT license.
