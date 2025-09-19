@@ -3,7 +3,7 @@ This is the official codebase of the paper: **STAR: A Benchmark for Astronomical
 ![Overview](./overview/picture.jpg)
 
 ## License
-The STAR dataset is released under MIT license.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## STAR datasets
 We propose STAR, a large-scale astronomical SR dataset containing 54,738 flux-consistent star field image pairs covering wide celestial regions. These pairs combine Hubble Space Telescope high-resolution observations with physically faithful low-resolution counterparts generated through a flux-preserving data generation pipeline, enabling systematic development of field-level ASR models.
