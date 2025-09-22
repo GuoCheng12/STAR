@@ -8,6 +8,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE.md) fi
 
 ## STAR datasets
 We propose STAR, a large-scale astronomical SR dataset containing **54,738** flux-consistent star field image pairs covering wide celestial regions. To address 3 drawbacks(**Flux Inconsistency, Object-Crop Configuration, Insufficient Data Diversity**), these pairs combine Hubble Space Telescope(HST) high-resolution observations with physically faithful low-resolution counterparts generated through a flux-preserving data generation pipeline, enabling systematic development of field-level ASR models. These image pairs are strategically sampled across diverse regions of the celestial sphere, and also reflected in its comprehensive coverage of various celestial environments, including dense star clusters, sparse galactic fields, and regions with varying background noise levels.
+![fig1](./overview/picture.jpg)
 
 
 ### Download
