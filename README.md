@@ -1,6 +1,6 @@
 # STAR
 This is the official codebase of the paper: **STAR: A Benchmark for Astronomical Star Fields Super-Resolution**
-![Overview](./overview/icon.png) 
+![Overview](./overview/icon_fig1.png) 
 
 
 ## License
