@@ -1,5 +1,5 @@
 # STAR
-This is the official codebase of the paper: **STAR: A Benchmark for Astronomical Star Fields Super-Resolution**
+This is the official codebase of the paper: **STAR: A Benchmark for Astronomical Star Fields Super-Resolution**[Arxiv](https://arxiv.org/abs/2507.16385)
 ![Overview](./overview/icon.png) 
 
 
