@@ -41,14 +41,14 @@ The dataset includes x2 and x4 scaling pairs in `.npy` format, suitable for trai
   - Raw HST images used to generate patches.
   - Download: [Google Drive](https://drive.google.com/file/d/1SoNXzfoeY5x-mLJrMGv2pbrgm9bULzDU/view?usp=drive_link)
 
-## Download and Usage
+## Download
 
 ### 1. Full Dataset
 
 Download the complete datasets for x2 and x4 scaling from Hugging Face:
 
-- **x2**: `data/x2/x2.tar.gz` (33GB)
-- **x4**: `data/x4/x4.tar.gz` (29GB)
+- **x2**: `data/x2/x2.tar.gz` 
+- **x4**: `data/x4/x4.tar.gz` 
 
 **Usage**:
 
@@ -60,8 +60,7 @@ Download the complete datasets for x2 and x4 scaling from Hugging Face:
    tar -xzf x2.tar.gz -C dataset/  # or x4.tar.gz
    ```
 
-   The extracted structure will be:
-
+   The extracted structure will be (x2 for example):
    ```
    dataset/x2/
    ├── train_hr_patch/
@@ -71,51 +70,26 @@ Download the complete datasets for x2 and x4 scaling from Hugging Face:
    ├── dataload_filename/
    │   ├── train_dataloader.txt
    │   ├── eval_dataloader.txt
+   
    ```
 
-### 2. Sample Dataset
-
-Use the sample data for quick testing or model prototyping:
-
-```python
-from datasets import Dataset
-import numpy as np
-import glob
-
-# Load sample data
-dataset = load_dataset("KUOCHENG/STAR", data_dir="sampled_data/x2/", split="train")
-
-# Custom paired loading
-train_hr_files = sorted(glob.glob("sampled_data/x2/train_hr_patch/*.npy"))
-train_lr_files = [f.replace("hr_patch", "lr_patch") for f in train_hr_files]
-eval_hr_files = sorted(glob.glob("sampled_data/x2/eval_hr_patch/*.npy"))
-eval_lr_files = [f.replace("hr_patch", "lr_patch") for f in eval_hr_files]
-data_dict = {
-    "hr_data": [np.load(f) for f in train_hr_files + eval_hr_files],
-    "lr_data": [np.load(f) for f in train_lr_files + eval_lr_files],
-    "split": ["train"] * len(train_hr_files) + ["eval"] * len(eval_hr_files)
-}
-paired_dataset = Dataset.from_dict(data_dict)
-print(paired_dataset[0]["hr_data"].shape)  # Output: (256, 256, 1)
-```
-
-### 3. Source Data
+### 2. Source Data
 
 For raw HST images (pre-patched), download from:
 
 - [Google Drive](https://drive.google.com/file/d/1SoNXzfoeY5x-mLJrMGv2pbrgm9bULzDU/view?usp=drive_link)
 
-## Notes
+## Usage
 
-- **Patch Size**: HR patches are `.npy` arrays with shape `(256, 256, 1)` (grayscale, single channel). LR patches have corresponding downscaled shapes.
-- **Pair Information**: HR/LR pairs are listed in `train_dataloader.txt` (500 pairs in sample, thousands in full dataset) and `eval_dataloader.txt` (100 pairs in sample). Format: `hr_path,lr_path,coordinates` (ignore coordinates for most tasks).
-- **Croissant Compatibility**: Sample includes `sampled_data/x2/croissant.json` for ML frameworks.
-- **Performance**: Sample data (~2.4GB, 1200 files) is lightweight for testing; full datasets are large (33GB/29GB).
+### 1. Environment config
+
+### 2. Training
+
+### 3. Test
 
 ## Citation
 
 If you use the STAR Dataset, please cite:
-
 ```bibtex
 @article{wu2025star,
   title={STAR: A Benchmark for Astronomical Star Fields Super-Resolution},
