@@ -128,4 +128,4 @@ If you use the STAR Dataset, please cite:
 
 ## Contact
 
-For issues or questions, open a GitHub issue or email [12guocheng@gmail.com].
+For issues or questions, open a GitHub issue or send me an email [12guocheng@gmail.com] for free.
