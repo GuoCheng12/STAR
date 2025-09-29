@@ -25,18 +25,27 @@ The dataset includes x2 and x4 scaling pairs in `.npy` format, suitable for trai
 ## Dataset Structure
 
 - **Full Data** (Hugging Face):
-  - **x2 Dataset**: `data/x2/x2.tar.gz` (33GB)
+  - **x2 Dataset**: `data/x2/x2.tar.gz`
     - Folders: `train_hr_patch/` (HR training patches), `train_lr_patch/` (LR training patches), `eval_hr_patch/` (HR validation patches), `eval_lr_patch/` (LR validation patches), `dataload_filename/` (`.txt` files with HR/LR pair mappings).
-  - **x4 Dataset**: `data/x4/x4.tar.gz` (29GB)
+  - **x4 Dataset**: `data/x4/x4.tar.gz`
     - Same structure as x2, for x4 scaling.
   - Download: [Hugging Face - KUOCHENG/STAR](https://huggingface.co/datasets/KUOCHENG/STAR)
 
-- **Sample Data** (Hugging Face, for testing and Croissant compatibility):
-  - **x2 Sample**: `sampled_data/x2/` (~2.4GB)
+- **Sample Data** (Hugging Face, for testing):
+  - **x2 Sample**: `sampled_data/x2/`
     - Contains 500 HR/LR pairs in `train_hr_patch/` and `train_lr_patch/`, 100 pairs in `eval_hr_patch/` and `eval_lr_patch/` (total ~1200 `.npy` files).
-    - Croissant metadata: `sampled_data/x2/croissant.json`
-  - Download: [Hugging Face - KUOCHENG/STAR](https://huggingface.co/datasets/KUOCHENG/STAR)
-
+   Quick Start:
+   ```python
+   from datasets import load_dataset
+  import numpy as np
+  dataset = load_dataset("KUOCHENG/STAR")
+  sample = dataset['train'][0]
+  hr_path = sample['hr_path']  # Path to HR .npy file
+  lr_path = sample['lr_path']  # Path to LR .npy file
+  
+  hr_data = np.load(hr_path, allow_pickle=True).item()
+  lr_data = np.load(lr_path, allow_pickle=True).item()
+  ```
 - **Source Data** (Optional):
   - Raw HST images used to generate patches.
   - Download: [Google Drive](https://drive.google.com/file/d/1SoNXzfoeY5x-mLJrMGv2pbrgm9bULzDU/view?usp=drive_link)
