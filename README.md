@@ -22,7 +22,7 @@ The dataset includes x2 and x4 scaling pairs in `.npy` format, suitable for trai
 
 ![Sample Image Pair](overview/picture.jpg)
 
-## Dataset Structure
+## Dataset Structure and Download
 
 - **Full Data** (Hugging Face):
   - **x2 Dataset**: `data/x2/x2.tar.gz`
@@ -34,6 +34,7 @@ The dataset includes x2 and x4 scaling pairs in `.npy` format, suitable for trai
 - **Sample Data** (Hugging Face, for testing):
   - **x2 Sample**: `sampled_data/x2/`
     - Contains 500 HR/LR pairs in `train_hr_patch/` and `train_lr_patch/`, 100 pairs in `eval_hr_patch/` and `eval_lr_patch/` (total ~1200 `.npy` files).
+   
    Quick Start:
    ```python
    from datasets import load_dataset
@@ -49,6 +50,8 @@ The dataset includes x2 and x4 scaling pairs in `.npy` format, suitable for trai
 - **Source Data** (Optional):
   - Raw HST images used to generate patches.
   - Download: [Google Drive](https://drive.google.com/file/d/1SoNXzfoeY5x-mLJrMGv2pbrgm9bULzDU/view?usp=drive_link)
+  
+ We will update the content later (how to use this source data)
 
 ## Download
 
@@ -81,13 +84,6 @@ Download the complete datasets for x2 and x4 scaling from Hugging Face:
    │   ├── eval_dataloader.txt
    
    ```
-
-### 2. Source Data
-
-For raw HST images (pre-patched), download from:
-
-- [Google Drive](https://drive.google.com/file/d/1SoNXzfoeY5x-mLJrMGv2pbrgm9bULzDU/view?usp=drive_link)
-
 ## Usage
 
 ### 1. Environment config
