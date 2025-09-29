@@ -51,7 +51,7 @@ The dataset includes x2 and x4 scaling pairs in `.npy` format, suitable for trai
   - Raw HST images used to generate patches.
   - Download: [Google Drive](https://drive.google.com/file/d/1SoNXzfoeY5x-mLJrMGv2pbrgm9bULzDU/view?usp=drive_link)
   
- We will update the content later (how to use this source data)
+   We will update the content later (how to use this source data)
 
 ## Download
 
