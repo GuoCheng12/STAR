@@ -4,11 +4,16 @@ This is the official codebase for the paper:
 **STAR: A Benchmark for Astronomical Star Fields Super-Resolution**  
 [ArXiv](https://arxiv.org/abs/2507.16385) | [Hugging Face Dataset](https://huggingface.co/datasets/KUOCHENG/STAR)
 
-![Dataset Overview](overview/icon.png)
+<img src="overview/STAR.png" alt="Dataset Overview" style="zoom:55%;" />
 
 ## License
 
 This project is licensed under the [MIT License](LICENSE.md).
+
+## Highlight
+
+- *Sep 19, 2025*: **STAR** is selected as one of the 56 **Spotlight** by NeurIPS'25 Datasets and Benchmark Tracks!
+- *Jul 22, 2025*: STAR has been released.
 
 ## Introduction
 
@@ -34,7 +39,7 @@ The dataset includes x2 and x4 scaling pairs in `.npy` format, suitable for trai
 - **Sample Data** (Hugging Face, for testing):
   - **x2 Sample**: `sampled_data/x2/`
     - Contains 500 HR/LR pairs in `train_hr_patch/` and `train_lr_patch/`, 100 pairs in `eval_hr_patch/` and `eval_lr_patch/` (total ~1200 `.npy` files).
-   
+  
    Quick Start:
    ```python
    from datasets import load_dataset
@@ -46,7 +51,7 @@ The dataset includes x2 and x4 scaling pairs in `.npy` format, suitable for trai
   
   hr_data = np.load(hr_path, allow_pickle=True).item()
   lr_data = np.load(lr_path, allow_pickle=True).item()
-  ```
+   ```
 - **Source Data** (Optional):
   - Raw HST images used to generate patches.
   - Download: [Google Drive](https://drive.google.com/file/d/1SoNXzfoeY5x-mLJrMGv2pbrgm9bULzDU/view?usp=drive_link)
@@ -84,13 +89,69 @@ Download the complete datasets for x2 and x4 scaling from Hugging Face:
    │   ├── eval_dataloader.txt
    
    ```
-## Usage
+## Getting Start
 
 ### 1. Environment config
 
+We recommend using Conda for environment management.
+
+```bash
+# 1. Create and activate the conda environment
+conda create -n star python=3.10 -y
+conda activate star
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Prepare the Dataset
+# Download the dataset from Hugging Face (or your source)
+# and unzip it into the `dataset/` directory.
+```
+
 ### 2. Training
 
-### 3. Test
+All model configurations are located in the `configs/models` directory.
+
+#### Single-GPU Training
+
+To train on a single GPU (e.g., GPU 0):
+
+```bash
+CUDA_VISIBLE_DEVICES=0 bash tools/dist_trainval.sh configs/models/FISR.py --log_dir log/
+```
+
+#### Multi-GPU Training
+
+To train on multiple GPUs (e.g., GPUs 0, 1, 2, 3):
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1,2,3 bash tools/dist_trainval.sh configs/models/FISR.py --log_dir log/
+```
+
+#### Custom Training Options
+
+You can append arguments to the training command to customize the run.
+
+- `--use_loss [L1/L2]`: Specify the loss function to use (`L1` or `L2`).
+- `--use_attention`: Enable the flux loss
+
+### 3. Testing & Evaluation
+
+Evaluate your model using a saved checkpoint.
+
+- `-e` or `--evaluate`: Switches the script to evaluation mode.
+- `--resume 'checkpoint_path'`: Specifies the path to the checkpoint file to load.
+- `-v` or `--visualize`: (Optional) Enables visualization output during testing. The output path can be configured in the model's config file.
+
+#### Example:
+
+```bash
+# Run evaluation and save visualization results
+CUDA_VISIBLE_DEVICES=0 bash tools/dist_trainval.sh configs/models/FISR.py \
+    -e \
+    --resume 'path/to/your/checkpoint.pth' \
+    -v
+```
 
 ## Citation
 

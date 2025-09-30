@@ -12,10 +12,10 @@ from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from . import MODEL
 from .base_model import Base_Model
 from .model_init import *
-import numpy as np
-import sep
+
+
 from einops import repeat, rearrange
-import pdb
+
 
 class Mlp(nn.Module):
     def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.):
@@ -654,12 +654,14 @@ class SwinIR(Base_Model):
                  window_size=7, mlp_ratio=4., qkv_bias=True, qk_scale=None,
                  drop_rate=0., attn_drop_rate=0., drop_path_rate=0.1,
                  norm_layer=nn.LayerNorm, ape=False, patch_norm=True,
-                 use_checkpoint=False, upscale=1, img_range=1., upsampler='', resi_connection='1conv',
+                 use_checkpoint=False, upscale=1, img_range=1., upsampler='', resi_connection='1conv',use_loss='L1',use_attention=False,
                  **kwargs):
         super(SwinIR, self).__init__(**kwargs)
         num_in_ch = in_chans
         num_out_ch = out_chans
         num_feat = 64
+        self.use_attention=use_attention
+        self.use_loss = use_loss
         self.img_range = img_range
         if in_chans == 3:
             rgb_mean = (0.4488, 0.4371, 0.4040)
@@ -846,38 +848,32 @@ class SwinIR(Base_Model):
 
     def forward(self, x, targets=None):
         pred_img = self.forward_inp(x)
+        # import pdb
+        # pdb.set_trace()
         if self.training:
-            # 提取 targets 中的数据
-            attn_map = targets['attn_map']
-            mask_float = targets['mask']
-            attn_map = torch.nan_to_num(attn_map, nan=0.0)
-            # 计算 L1 损失
-            l1_loss = (torch.abs(pred_img - targets['hr']) * mask_float).sum() / (mask_float.sum() + 1e-3)
-            weighted_diff = torch.abs(pred_img - targets['hr']) * attn_map
-            flux_loss = weighted_diff.sum() / (attn_map.sum() + 1e-3)
-            total_loss = l1_loss + 0.01 * flux_loss
-            losses = dict(l1_loss=l1_loss, flux_loss=0.01*flux_loss)
+            mask = targets['mask']
+            mask_sum = mask.sum() + 1e-3
+
+            if self.use_loss == 'L1':
+                base_loss = (torch.abs(pred_img - targets['hr']) * mask).sum() / mask_sum
+                loss_name = 'l1_loss'
+            elif self.use_loss == 'L2':
+                base_loss = ((pred_img - targets['hr'])**2 * mask).sum() / mask_sum
+                loss_name = 'l2_loss'
+
+            losses = {loss_name: base_loss}
+            total_loss = base_loss
+
+            if self.use_attention:
+                attn_map = torch.nan_to_num(targets['attn_map'], nan=0.0)
+                weighted_diff = torch.abs(pred_img - targets['hr']) * attn_map
+                flux_loss = weighted_diff.sum() / (attn_map.sum() + 1e-3)
+                losses['flux_loss'] = 0.05 * flux_loss
+                total_loss = base_loss + 0.05 * flux_loss
             return total_loss, losses
         else:
-            return dict(pred_img=pred_img)
-
-    
-    def measure_flux_with_gt_sources(self, image, sources, mask, fw, fh):
-        bkg = sep.Background(image, mask=~mask.astype(bool), fw=fw, fh=fh)
-        image_sub = image - bkg.back()
-        flux, fluxerr, flag = sep.sum_ellipse(
-            image_sub,
-            sources['x'], sources['y'],
-            sources['a'], sources['b'], sources['theta'],
-            2.5, 
-            err=bkg.globalrms
-        )
-
-        # 过滤 NaN 值
-        valid_idx = ~np.isnan(flux)
-        flux_pred = flux[valid_idx]
-        return flux_pred 
-    
+            return dict(pred_img = pred_img)
+        
     def flops(self):
         flops = 0
         H, W = self.patches_resolution
@@ -888,6 +884,7 @@ class SwinIR(Base_Model):
         flops += H * W * 3 * self.embed_dim * self.embed_dim
         flops += self.upsample.flops()
         return flops
+
 
 
 if __name__ == '__main__':

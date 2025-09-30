@@ -39,23 +39,41 @@ from astropy.io import fits
 from matplotlib.colors import Normalize
 from skimage.metrics import structural_similarity as ssim
 from skimage.metrics import peak_signal_noise_ratio as psnr
-
-import sep
-
-
+# def init_logger(config):
+#     log_file = os.path.join(config['train']['log_dir'],'train.log')
+#     rank = config['train']['local_rank']
+#     log_format = '%(asctime)s  %(levelname)5s  %(message)s'
+#     logging.basicConfig(level=logging.INFO if rank == 0 else 'ERROR',
+#                         format=log_format,
+#                         filename=log_file)
+#     console = logging.StreamHandler()
+#     console.setLevel(logging.INFO if rank == 0 else 'ERROR')
+#     console.setFormatter(logging.Formatter(log_format))
+#     logging.getLogger(__name__).addHandler(console)
+#     return logging.getLogger(__name__)
 def init_logger(config):
     log_file = os.path.join(config['train']['log_dir'],'train.log')
     rank = config['train']['local_rank']
     log_format = '%(asctime)s  %(levelname)5s  %(message)s'
-    logging.basicConfig(level=logging.INFO if rank == 0 else 'ERROR',
-                        format=log_format,
-                        filename=log_file)
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.INFO if rank == 0 else 'ERROR')
+    
+    logger.handlers.clear()
+    
+    if rank == 0:
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(logging.Formatter(log_format))
+        logger.addHandler(file_handler)
+    
     console = logging.StreamHandler()
     console.setLevel(logging.INFO if rank == 0 else 'ERROR')
     console.setFormatter(logging.Formatter(log_format))
-    logging.getLogger(__name__).addHandler(console)
-    return logging.getLogger(__name__)
-
+    logger.addHandler(console)
+    
+    return logger
 def init_config(args):
 
     def fuse_config(base_cfg, cfg):
@@ -136,6 +154,7 @@ def init_ddp(args,configs):
     return configs
 
 def init_all(args):
+    # pdb.set_trace()
     configs = init_config(args)
     torch.set_default_dtype(getattr(torch,configs['dataset'].get('data_type','float32')))
     configs = init_ddp(args,configs)
@@ -226,48 +245,70 @@ def fits_vis(ori_array):
 
 
 def vis_astro_SR(pred, target, input_img, mask, name, vis_dir):
+    import pdb
+    # pdb.set_trace()
+    # input_vis = np.clip(np.squeeze(input_img)*255,0,255).astype(np.uint8)#fits_vis(np.squeeze(input_img))
+    # target_vis = np.clip(np.squeeze(target)*255,0,255).astype(np.uint8)#fits_vis(np.squeeze(target))
     input_vis = fits_vis(np.squeeze(input_img))
     target_vis = fits_vis(np.squeeze(target))
-    
     pred_masked = np.where(mask, pred, np.nan)
+    # pred_vis = np.clip(np.squeeze(pred_masked)*255,0,255).astype(np.uint8)#fits_vis(np.squeeze(pred_masked))
     pred_vis = fits_vis(np.squeeze(pred_masked))
-    
-    input_size = input_vis.shape[0]  # 例如 128
-    hr_size = pred_vis.shape[0]      # 例如 256
+    try:
+        pred_vis = np.transpose(pred_vis, (1, 2, 0))
+    except:
+        import pdb
+        pred_vis =np.expand_dims(pred_vis, axis=2)
+    input_size = input_vis.shape[0]  
+    hr_size = pred_vis.shape[0]  
 
-    # 创建一个 1x3 的子图布局，宽度比例根据图像尺寸调整
     fig = plt.figure(figsize=(15, 5))
     gs = gridspec.GridSpec(1, 3, width_ratios=[input_size/hr_size, 1, 1])
 
-    # 子图 1：低分辨率输入图像
     ax1 = fig.add_subplot(gs[0])
-    ax1.imshow(input_vis, cmap='gray', extent=[0, input_size, 0, input_size])
+    ax1.imshow(input_vis, cmap='gray',extent=[0, input_size, 0, input_size])# cmap='gray',
     ax1.set_title('Input (LR)')
-    ax1.set_aspect('equal')  # 保持宽高比
+    ax1.set_aspect('equal') 
     ax1.axis('off')
 
-    # 子图 2：预测高分辨率图像（应用掩码）
     ax2 = fig.add_subplot(gs[1])
     ax2.imshow(pred_vis, cmap='gray', extent=[0, hr_size, 0, hr_size])
     ax2.set_title('Prediction (HR)')
     ax2.set_aspect('equal')
     ax2.axis('off')
 
-    # 子图 3：目标高分辨率图像
     ax3 = fig.add_subplot(gs[2])
     ax3.imshow(target_vis, cmap='gray', extent=[0, hr_size, 0, hr_size])
     ax3.set_title('Target (HR)')
     ax3.set_aspect('equal')
     ax3.axis('off')
 
-    # 调整布局并保存
     plt.tight_layout()
     os.makedirs(vis_dir, exist_ok=True) if not os.path.exists(vis_dir) else None  
     save_path = os.path.join(vis_dir, f"{name}_vis.png")
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
 
-
+def vis_astro_SR1(pred, target, input_img, mask, name, vis_dir):
+    pred_masked = np.where(mask, pred, np.nan)
+    pred_vis = fits_vis(np.squeeze(pred_masked)) 
+    target_vis = fits_vis(np.squeeze(target))
+    hr_size = pred_vis.shape[0]  
+    fig, ax = plt.subplots(figsize=(6, 6))
+    
+    im = ax.imshow(pred_vis, cmap='gray')#, extent=[0, hr_size, 0, hr_size])
+    # ax.set_title('Prediction (HR)')
+    ax.set_aspect('equal')
+    ax.axis('off')  
+    plt.tight_layout()
+    os.makedirs(vis_dir, exist_ok=True) 
+    save_path = os.path.join(vis_dir, f"{name}_vis_one.png")
+    plt.savefig(save_path, dpi=300, bbox_inches='tight', pad_inches=0)
+    plt.close(fig)  
+    save_path_npy = os.path.join(vis_dir, f"{name}_vis_one.npy")
+    np.save(save_path_npy, pred_vis) 
+    save_path_npy = os.path.join(vis_dir, f"{name}_vis_one_gt.npy")
+    np.save(save_path_npy, target_vis) 
 import lpips
 # Assuming ssim and psnr are already imported (e.g., from skimage.metrics)
 
@@ -275,7 +316,8 @@ def evaluate_metric_SR(pred, target, mask):
     batch_ssim = 0.0
     batch_psnr = 0.0
     num_images = pred.size(0)
-
+    import pdb
+    # pdb.set_trace()
     for i in range(num_images):
         pred_i = pred[i].numpy().transpose(1, 2, 0)  
         target_i = target[i].numpy().transpose(1, 2, 0)
@@ -284,11 +326,26 @@ def evaluate_metric_SR(pred, target, mask):
         target_valid = target_i[mask_i]
 
         if len(pred_valid) > 0:
-            ssim_value = ssim(target_valid, pred_valid, 
-                            data_range=target_valid.max() - target_valid.min(), 
-                            multichannel=True)
-            psnr_value = psnr(target_valid, pred_valid, 
-                            data_range=target_valid.max() - target_valid.min())
+            data_range = target_valid.max() - target_valid.min()
+            if data_range <= 0:
+                data_range = 1.0
+            
+            target_valid_clipped = np.clip(target_valid, target_valid.min(), target_valid.max())
+            pred_valid_clipped = np.clip(pred_valid, target_valid.min(), target_valid.max())
+            try:
+                ssim_value = ssim(target_valid_clipped, pred_valid_clipped, 
+                                 data_range=data_range, multichannel=True)
+                psnr_value = psnr(target_valid_clipped, pred_valid_clipped, 
+                                 data_range=data_range)
+                if psnr_value < 0:
+                    psnr_value = 0.0
+                    # print(f"Warning: PSNR was negative, set to 0.0")
+                    
+            except Exception as e:
+                ssim_value = 0.0
+                psnr_value = 0.0
+                # print(f"Error calculating metrics: {e}")
+                
             batch_ssim += ssim_value
             batch_psnr += psnr_value
 

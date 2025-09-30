@@ -199,13 +199,16 @@ class Restormer(Base_Model):
                  bias=False,
                  LayerNorm_type='WithBias',  ## Other option 'BiasFree'
                  dual_pixel_task=False,
+                 use_loss='L1',
+                 use_attention=False,
                  **kwargs  ## True for dual-pixel defocus deblurring only. Also set inp_channels=6
                  ):
 
         super(Restormer, self).__init__(**kwargs)
         self.inp_channels = inp_channels
         self.out_channels = out_channels
-
+        self.use_loss = use_loss
+        self.use_attention = use_attention
         self.patch_embed = OverlapPatchEmbed(inp_channels, dim)
 
         self.encoder_level1 = nn.Sequential(*[
@@ -244,7 +247,9 @@ class Restormer(Base_Model):
         self.decoder_level1 = nn.Sequential(*[
             TransformerBlock(dim=int(dim * 2 ** 1), num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor,
                              bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_blocks[0])])
-
+        # self.decoder_level0 = nn.Sequential(*[
+        #     TransformerBlock(dim=int(dim * 1 ** 1), num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor,
+        #                      bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_blocks[0])])
         # self.refinement = nn.Sequential(*[
         #     TransformerBlock(dim=int(dim * 2 ** 1), num_heads=heads[0], ffn_expansion_factor=ffn_expansion_factor,
         #                      bias=bias, LayerNorm_type=LayerNorm_type) for i in range(num_refinement_blocks)])
@@ -260,6 +265,7 @@ class Restormer(Base_Model):
         self.output = nn.Conv2d(int(dim * 1 ** 1), out_channels, kernel_size=3, stride=1, padding=1, bias=bias)
 
     def forward(self, inp_img,targets=None):
+
         inp_enc_level1 = self.patch_embed(inp_img)
         out_enc_level1 = self.encoder_level1(inp_enc_level1)
 
@@ -285,10 +291,11 @@ class Restormer(Base_Model):
         inp_dec_level1 = self.up2_1(out_dec_level2)
         inp_dec_level1 = torch.cat([inp_dec_level1, out_enc_level1], 1)
         out_dec_level1 = self.decoder_level1(inp_dec_level1)
-        import pdb
-        # pdb.set_trace()
 
-        out_dec_level1 = self.up3_1(out_dec_level1)#48,128,128z
+
+
+        out_dec_level1 = self.up3_1(out_dec_level1)#48,128,128z          ###增加
+        # out_dec_level1 = self.decoder_level0(out_dec_level1)            ###增加
         out_dec_level1 = self.refinement1(out_dec_level1)#96,128,128
         
         #### For Dual-Pixel Defocus Deblurring Task ####
@@ -297,25 +304,28 @@ class Restormer(Base_Model):
             out_dec_level1 = self.output(out_dec_level1)
         ###########################
         else:
-            # if self.inp_channels != self.out_channels:  # 仅限于多通道输入单通道输出
-            #     inp_img = inp_img.mean(dim=1, keepdim=True)
-            #     out_dec_level1 = self.output(out_dec_level1) + inp_img
-            # else:
-            out_dec_level1 = self.output(out_dec_level1) #+ inp_img
+            out_dec_level1 = self.output(out_dec_level1) #+ inp_img ###修改
         if self.training:
-            attn_map = targets['attn_map']
-            mask_float = targets['mask']
-            attn_map = torch.nan_to_num(attn_map, nan=0.0)
-            l1_loss = (torch.abs(out_dec_level1 - targets['hr']) * mask_float).sum() / (mask_float.sum() + 1e-3)
+            mask = targets['mask']
+            mask_sum = mask.sum() + 1e-3
 
-            weighted_diff = torch.abs(out_dec_level1 - targets['hr']) * attn_map
-            flux_loss = weighted_diff.sum() / (attn_map.sum() + 1e-3)
-            total_loss = l1_loss + 0.01 * flux_loss
-            losses = dict(l1_loss=l1_loss, flux_loss=0.01*flux_loss)
-            #losses = dict(l1_loss = (torch.abs(out_dec_level1 - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3))
-            #losses = dict(mse_loss=((out_dec_level1 - targets['hr']) ** 2 * targets['mask']).sum() / (targets['mask'].sum() + 1e-3))
-            #total_loss = torch.stack([*losses.values()]).sum()
+            if self.use_loss == 'L1':
+                base_loss = (torch.abs(out_dec_level1 - targets['hr']) * mask).sum() / mask_sum
+                loss_name = 'l1_loss'
+            elif self.use_loss == 'L2':
+                base_loss = ((out_dec_level1 - targets['hr'])**2 * mask).sum() / mask_sum
+                loss_name = 'l2_loss'
+
+            losses = {loss_name: base_loss}
+            total_loss = base_loss
+
+            if self.use_attention:
+                attn_map = torch.nan_to_num(targets['attn_map'], nan=0.0)
+                weighted_diff = torch.abs(out_dec_level1 - targets['hr']) * attn_map
+                flux_loss = weighted_diff.sum() / (attn_map.sum() + 1e-3)
+                losses['flux_loss'] = 0.01 * flux_loss
+                total_loss = base_loss + 0.01 * flux_loss
             return total_loss, losses
         else:
             return dict(pred_img = out_dec_level1)
-        # return out_dec_level1
+

@@ -257,14 +257,16 @@ class PromptIR(Base_Model):
         bias = False,
         LayerNorm_type = 'WithBias',   ## Other option 'BiasFree'
         decoder = False,
+        use_loss='L1',#'L2','AL'
+        use_attention=False,
         **kwargs
     ):
 
         super(PromptIR, self).__init__(**kwargs)
-
+        self.use_loss = use_loss
         self.patch_embed = OverlapPatchEmbed(inp_channels, dim)
         
-        
+        self.use_attention = use_attention
         self.decoder = decoder
         
         if self.decoder:
@@ -381,23 +383,52 @@ class PromptIR(Base_Model):
         
 
         out_dec_level1 = self.output(out_dec_level1)# + inp_img
-        pred_img = out_dec_level1
+
         if self.training:
-            
-            attn_map = targets['attn_map']
-            mask_float = targets['mask']
-            attn_map = torch.nan_to_num(attn_map, nan=0.0)
-            # 计算 L1 损失
-            l1_loss = (torch.abs(pred_img - targets['hr']) * mask_float).sum() / (mask_float.sum() + 1e-3)
-            weighted_diff = torch.abs(pred_img - targets['hr']) * attn_map
-            flux_loss = weighted_diff.sum() / (attn_map.sum() + 1e-3)
-            total_loss = l1_loss + 0.01 * flux_loss
-            losses = dict(l1_loss=l1_loss, flux_loss=0.01 * flux_loss)
+            mask = targets['mask']
+            mask_sum = mask.sum() + 1e-3
+
+            if self.use_loss == 'L1':
+                base_loss = (torch.abs(out_dec_level1 - targets['hr']) * mask).sum() / mask_sum
+                loss_name = 'l1_loss'
+            elif self.use_loss == 'L2':
+                base_loss = ((out_dec_level1 - targets['hr'])**2 * mask).sum() / mask_sum
+                loss_name = 'l2_loss'
+
+            losses = {loss_name: base_loss}
+            total_loss = base_loss
+
+            if self.use_attention:
+                attn_map = torch.nan_to_num(targets['attn_map'], nan=0.0)
+                weighted_diff = torch.abs(out_dec_level1 - targets['hr']) * attn_map
+                flux_loss = weighted_diff.sum() / (attn_map.sum() + 1e-3)
+                losses['flux_loss'] = 0.01 * flux_loss
+                total_loss = base_loss + 0.01 * flux_loss
             return total_loss, losses
         else:
-            return dict(pred_img=pred_img)
+            return dict(pred_img = out_dec_level1)
 
-        # return out_dec_level1
+            # if use_attention:
+            #     attn_map = targets['attn_map']
+            #     mask_float = targets['mask']
+            #     attn_map = torch.nan_to_num(attn_map, nan=0.0)
+            #     if self.use_loss=='L1':
+            #         loss = (torch.abs(out_dec_level1 - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3)
+            #     elif self.use_loss=='L2':
+            #         loss = ((out_dec_level1 - targets['hr'])**2 * targets['mask']).sum() / (targets['mask'].sum() + 1e-3)
+            #     weighted_diff = torch.abs(out_dec_level1 - targets['hr']) * attn_map
+            #     flux_loss = weighted_diff.sum() / (attn_map.sum() + 1e-3)
+            #     total_loss = loss + 0.01 * flux_loss
+            #     losses = dict(l1_loss=l1_loss, flux_loss=0.01*flux_loss)
+            # else:
+            #     if self.use_loss=='L1':
+            #         losses = dict(l1_loss = (torch.abs(out_dec_level1 - targets['hr'])*targets['mask']).sum()/(targets['mask'].sum() + 1e-3))
+            #     elif self.use_loss=='L2':
+            #         losses = dict(l2_loss = ((out_dec_level1 - targets['hr'])**2 * targets['mask']).sum() / (targets['mask'].sum() + 1e-3))
+            #     total_loss = torch.stack([*losses.values()]).sum()
+
+
+
 if __name__ == '__main__':
 
     model = PromptIR(inp_channels=1,out_channels=1,dim=48,num_blocks=[4, 6, 6, 8],

@@ -57,14 +57,15 @@ class RG(nn.Module):
 
 @MODEL.register
 class RCAN(Base_Model):
-    def __init__(self, scale,num_features,num_rg,num_rcab,reduction,**kwargs):
+    def __init__(self, scale,num_features,num_rg,num_rcab,reduction,use_loss='L1',use_attention=False,**kwargs):
         super(RCAN, self).__init__(**kwargs)
+        self.use_attention=use_attention
         self.scale = scale
         self.num_features = num_features
         self.num_rg = num_rg
         self.num_rcab = num_rcab
         self.reduction = reduction
-
+        self.use_loss = use_loss
         self.sf = nn.Conv2d(1, self.num_features, kernel_size=3, padding=1)
         self.rgs = nn.Sequential(*[RG(self.num_features, self.num_rcab, self.reduction) for _ in range(self.num_rg)])
         self.conv1 = nn.Conv2d(self.num_features, self.num_features, kernel_size=3, padding=1)
@@ -83,19 +84,30 @@ class RCAN(Base_Model):
         x = self.upscale(x)
         x = self.conv2(x)
         # return x
-        pred_img = x
         if self.training:
-            attn_map = targets['attn_map']
-            mask_float = targets['mask']
-            attn_map = torch.nan_to_num(attn_map, nan=0.0)
-            l1_loss = (torch.abs(pred_img - targets['hr']) * mask_float).sum() / (mask_float.sum() + 1e-3)
-            weighted_diff = torch.abs(pred_img - targets['hr']) * attn_map
-            flux_loss = weighted_diff.sum() / (attn_map.sum() + 1e-3)
-            total_loss = l1_loss + 0.01 * flux_loss
-            losses = dict(l1_loss=l1_loss, flux_loss=flux_loss)
+            mask = targets['mask']
+            mask_sum = mask.sum() + 1e-3
+
+            if self.use_loss == 'L1':
+                base_loss = (torch.abs(x - targets['hr']) * mask).sum() / mask_sum
+                loss_name = 'l1_loss'
+            elif self.use_loss == 'L2':
+                base_loss = ((x - targets['hr'])**2 * mask).sum() / mask_sum
+                loss_name = 'l2_loss'
+
+            losses = {loss_name: base_loss}
+            total_loss = base_loss
+
+            if self.use_attention:
+                attn_map = torch.nan_to_num(targets['attn_map'], nan=0.0)
+                weighted_diff = torch.abs(x - targets['hr']) * attn_map
+                flux_loss = weighted_diff.sum() / (attn_map.sum() + 1e-3)
+                losses['flux_loss'] = 0.01 * flux_loss
+                total_loss = base_loss + 0.01 * flux_loss
             return total_loss, losses
         else:
             return dict(pred_img = x)
+
 if __name__ == '__main__':
 
     model = RCAN(scale=2,num_features=64, num_rg=10,num_rcab=20, reduction=16)

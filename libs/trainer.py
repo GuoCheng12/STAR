@@ -14,6 +14,7 @@ from PIL import Image
 import cv2
 from .tester import Tester
 from torch.utils.tensorboard import SummaryWriter
+import logging
 class Trainer(object):
     def __init__(self,
                  model,
@@ -45,10 +46,10 @@ class Trainer(object):
         self.grad_clip = grad_clip
         self.ddp = ddp
         self.rank = local_rank
-
         # Initialize TensorBoard writer
-        log_dir = os.path.join('/home/bingxing2/ailab/scxlab0061/Astro_SR/runs', 
+        log_dir = os.path.join('tensorboard/runs', 
                               f'{model.__class__.__name__}_{time.strftime("%Y%m%d-%H%M%S")}')
+        # pdb.set_trace()
         if not self.ddp or (self.ddp and self.rank == 0):
             self.writer = SummaryWriter(log_dir=log_dir)
             self.logger.info(f"TensorBoard logs will be saved to: {log_dir}")
@@ -60,7 +61,7 @@ class Trainer(object):
             # model = torch.nn.SyncBatchNorm.convert_sync_batchnorm(model)
             self.model = nn.parallel.DistributedDataParallel(self.model,
                                                              device_ids=[local_rank % torch.cuda.device_count()],
-                                                             find_unused_parameters=False)
+                                                             find_unused_parameters=True)
 
 
     def train(self):
@@ -73,7 +74,8 @@ class Trainer(object):
             self.train_one_epoch()
             if epoch % self.eval_epoch == 0:
                 self.eval_one_epoch()
-
+            import pdb
+            # pdb.set_trace()
             if epoch % self.save_ckp_epoch == 0 and self.rank == 0:
                 if self.ddp:
                     torch.save(self.model.module.state_dict(), \
@@ -85,7 +87,6 @@ class Trainer(object):
         # Close the TensorBoard writer
         if not self.ddp or (self.ddp and self.rank == 0):
             self.writer.close()
-
     def train_one_epoch(self):
         self.model.train()
         for i, datalist in enumerate(self.trainloader):
@@ -101,7 +102,7 @@ class Trainer(object):
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), **self.grad_clip)
             self.optimizer.step()
             self.scheduler.step()
-            
+
             # Add a check before using self.writer
             if hasattr(self, 'writer') and (not self.ddp or (self.ddp and self.rank == 0)):
                 self.writer.add_scalar('Train/Total_Loss', total_loss.item(), self.epoch * len(self.trainloader) + i)
@@ -109,7 +110,8 @@ class Trainer(object):
                 # Log individual loss components
                 for key, value in losses.items():
                     self.writer.add_scalar(f'Train/{key}', value.item(), self.epoch * len(self.trainloader) + i)
-            
+
+
             if (i+1)%self.display_iter==0:
                 display_string = "Epoch {:d} [{:d}/{:d}] (lr: {:.6f}): ".format\
                     (self.epoch, i+1, len(self.trainloader), self.optimizer.param_groups[0]['lr'])
@@ -127,8 +129,7 @@ class Trainer(object):
 
 
     def eval_one_epoch(self):
-        ssim, psnr = Tester(self.model, self.evalloader, ddp=self.ddp,logger=self.logger, visualize=True, vis_dir='/home/bingxing2/ailab/scxlab0061/Astro_SR/vis/eval_result_promptIR_real_world_l1_flux').eval()
-        # Add evaluation metrics to TensorBoard
+        ssim, psnr = Tester(self.model, self.evalloader, ddp=self.ddp,logger=self.logger).eval()
         if not self.ddp or (self.ddp and self.rank == 0):
             self.writer.add_scalar('Eval/SSIM', ssim, self.epoch)
             self.writer.add_scalar('Eval/PSNR', psnr, self.epoch)
@@ -138,5 +139,5 @@ class Trainer(object):
                 'SSIM': ssim,
                 'PSNR': psnr
             }, self.epoch)
-        
         return ssim, psnr
+        # Tester(self.model, self.evalloader, ddp=self.ddp,logger=self.logger, visualize=True, vis_dir='eval_result_swinIR_l2').eval()
