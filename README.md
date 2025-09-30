@@ -13,7 +13,7 @@ This project is licensed under the [MIT License](LICENSE.md).
 ## Highlight
 
 - *Sep 19, 2025*: **STAR** is selected as one of the 56 **Spotlight** by NeurIPS'25 Datasets and Benchmark Tracks! 🎉🎉🎉
-- *Jul 22, 2025*: STAR has been released.
+- *Jul 22, 2025*: **STAR** has been released.
 
 ## Introduction
 
