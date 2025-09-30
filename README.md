@@ -2,8 +2,9 @@
 
 This is the official codebase for the paper:  
 **STAR: A Benchmark for Astronomical Star Fields Super-Resolution**  
-[ArXiv](https://arxiv.org/abs/2507.16385) | [Hugging Face Dataset](https://huggingface.co/datasets/KUOCHENG/STAR)
 
+<a href="https://huggingface.co/datasets/KUOCHENG/STAR"><img src="https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-red?label=Dataset" style="max-width: 100%;"></a>
+<a href="https://arxiv.org/abs/2507.16385"><img src="https://img.shields.io/badge/arXiv-2305.12345-red.svg" style="max-width: 100%;"></a>
 <img src="overview/icon_.png" alt="Dataset Overview" style="zoom:35%;" />
 
 ## License
