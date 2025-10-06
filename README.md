@@ -26,7 +26,7 @@ The **STAR (Super-Resolution for Astronomical Star Fields)** dataset is a large-
 
 The dataset includes x2 and x4 scaling pairs in `.npy` format, suitable for training and evaluating super-resolution models.
 
-![Sample Image Pair](overview/picture.jpg)
+![Sample Image Pair](overview/picture.png)
 
 ## Dataset Structure and Download
 
