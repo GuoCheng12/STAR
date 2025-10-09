@@ -63,7 +63,7 @@ The dataset includes x2 and x4 scaling pairs in `.npy` format, suitable for trai
 
 ### 1. Full Dataset
 
-Download the complete datasets for x2 and x4 scaling from Hugging Face:
+Download the complete datasets for x2 and x4 scaling from [Hugging Face](https://huggingface.co/datasets/KUOCHENG/STAR):
 
 - **x2**: `data/x2/x2.tar.gz` 
 - **x4**: `data/x4/x4.tar.gz` 
